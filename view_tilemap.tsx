@@ -13,7 +13,9 @@ import { type MapLoads, mapLoadsByTilemap } from "./analysis.ts";
 import type { LoadCall } from "./script_scan.ts";
 import { scriptHref } from "./view_script.tsx";
 import { TILEMAP_NAMES } from "./names.ts";
-import { bgpLabel, type BgPlttChoice, BgPlttSelect, hex4, NumberStepper, SpriteCanvas } from "./components.tsx";
+import { bgpLabel, type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+
+export const tilemapHref = (id: number) => `#tilemap/${hex4(id)}`;
 
 const tilemapLabel = (id: number, withDesc = true) => {
   const name = TILEMAP_NAMES[id];
@@ -62,14 +64,19 @@ export const TilemapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs), [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const loadsByTilemap = mapLoadsByTilemap(rom);
-  const [selected, setSelected] = useState<FileEntry>(files[0]);
+  const byID = (id: number | undefined) => files.find((f) => f.id === id);
+  const [selected, setSelected] = useState<FileEntry>(byID(hashID("tilemap")) ?? files[0]);
+  useHashID("tilemap", (id) => {
+    const f = byID(id);
+    if (f) setSelected(f);
+  });
 
   return (
     <div class="viewer">
       <ul class="sprite-list">
         {files.map((f) => (
-          <li key={f.id} class={f === selected ? "selected" : ""} onClick={() => setSelected(f)} title={loadsByTilemap.has(f.id) ? "スクリプトから読み込み元が分かる" : ""}>
-            <span class={loadsByTilemap.has(f.id) ? "" : "dim"}>{tilemapLabel(f.id, false)}</span>
+          <li key={f.id} class={f === selected ? "selected" : ""} title={loadsByTilemap.has(f.id) ? "スクリプトから読み込み元が分かる" : ""}>
+            <a href={tilemapHref(f.id)} class={loadsByTilemap.has(f.id) ? "" : "dim"}>{tilemapLabel(f.id, false)}</a>
           </li>
         ))}
       </ul>

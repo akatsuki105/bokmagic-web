@@ -83,3 +83,19 @@ export const mapLoadsByTilemap = (rom: ROMFile): Map<number, MapLoads[]> =>
     }
     return by;
   });
+
+// 当たり判定マップID -> それを読み込む呼び出し (同じ呼び出しが複数の起点から届いても1つにまとめる)
+export const collisionLoads = (rom: ROMFile): Map<number, LoadCall[]> =>
+  memo(rom, "collisionLoads", () => {
+    const by = new Map<number, LoadCall[]>();
+    for (const m of mapLoads(rom)) {
+      for (const c of m.collisions) {
+        const id = c.args.p?.[0];
+        if (id === null || id === undefined) continue;
+        const list = by.get(id) ?? [];
+        by.set(id, list);
+        if (!list.some((d) => d.address === c.address && d.args.n?.[0] === c.args.n?.[0])) list.push(c);
+      }
+    }
+    return by;
+  });

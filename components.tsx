@@ -201,3 +201,21 @@ export const BgPlttSelect: FunctionComponent<{ files: BgPlttFile[]; value: BgPlt
     {rowSelectable && <Swatches colors={bgPlttColors(files, value)} start={0} />}
   </span>
 );
+
+// URL の #tab/0xXXXX の 0xXXXX, 無ければ undefined
+export const hashID = (tab: string): number | undefined => {
+  const m = location.hash.match(/^#(\w+)\/(0x[0-9A-Fa-f]+)$/);
+  return m && m[1] === tab ? parseInt(m[2], 16) : undefined;
+};
+
+// #tab/0xXXXX が変わったら onChange を呼ぶ
+export const useHashID = (tab: string, onChange: (id: number) => void) => {
+  useEffect(() => {
+    const onHash = () => {
+      const id = hashID(tab);
+      if (id !== undefined) onChange(id);
+    };
+    addEventListener("hashchange", onHash);
+    return () => removeEventListener("hashchange", onHash);
+  }, [tab]);
+};

@@ -2,13 +2,13 @@
 // 選んでいるスクリプトは URL の #script/0xXXXX に入れておく (ほかのタブからリンクできるように)
 
 import { FunctionComponent } from "preact";
-import { useEffect, useMemo, useState } from "preact/hooks";
+import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { decodeScript, type ScriptEntry } from "./script.ts";
 import { scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
 import { SCRIPT_NAMES, STRING_NAMES } from "./names.ts";
-import { hex4 } from "./components.tsx";
+import { hashID, hex4, useHashID } from "./components.tsx";
 
 const PRINT_CONTEXT: PrintContext = {
   scriptNames: new Map(Object.entries(SCRIPT_NAMES).map(([id, [name]]) => [Number(id), name])),
@@ -18,25 +18,11 @@ const SCRIPT_ID_BY_NAME = new Map(Object.entries(SCRIPT_NAMES).map(([id, [name]]
 
 export const scriptHref = (id: number) => `#script/${hex4(id)}`;
 
-// #script/0xXXXX の 0xXXXX
-const idFromHash = (): number | undefined => {
-  const m = location.hash.match(/^#script\/(0x[0-9A-Fa-f]+)$/);
-  return m ? parseInt(m[1], 16) : undefined;
-};
-
 export const ScriptViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const dir = scriptDirectory(rom);
-  const [selected, setSelected] = useState(idFromHash() ?? 1);
+  const [selected, setSelected] = useState(hashID("script") ?? 1);
   const [filter, setFilter] = useState("");
-
-  useEffect(() => {
-    const onHash = () => {
-      const id = idFromHash();
-      if (id !== undefined) setSelected(id);
-    };
-    addEventListener("hashchange", onHash);
-    return () => removeEventListener("hashchange", onHash);
-  }, []);
+  useHashID("script", setSelected);
 
   const list = useMemo(() => {
     const f = filter.trim().toLowerCase();

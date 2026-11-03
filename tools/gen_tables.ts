@@ -1,6 +1,6 @@
 // boktai2 decomp のヘッダとソースから、ビューワが使う表を作る
 // - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID, スクリプトID, 文字列ID の定数名
-//   タイルマップのファイルID (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h)
+//   タイルマップ・当たり判定マップのファイルID (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h)
 // - aux_anims.ts: AuxSprite とアニメファイルの組 (ソース中で一緒に使われているもの)
 // - bgpltt_refs.ts: BG パレットがソース中で読まれている場所
 // e.g. deno run --allow-read --allow-write tools/gen_tables.ts ~/Dev/GBA/ret/boktai2/boktai2
@@ -42,6 +42,7 @@ const sprites = parseDefines(await Deno.readTextFile(`${decomp}/include/constant
 const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite_animation.h`), /^ANI?M_/);
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
 const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);
+const collisions = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/collision_map.h`), /^HP_/);
 const strings = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/strings.h`), /^(STR|BIN)_/);
 
 // `#define Script_StaffRoll Script_0x1040 // desc` を拾う
@@ -85,6 +86,11 @@ ${nameTable(bgPltts)}
 // タイルマップのファイルID (DIR_TILE_MAP) -> [定数名, 説明] (include/constants/tilemap.h in boktai2 decomp)
 export const TILEMAP_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(tilemaps)}
+};
+
+// 当たり判定マップのファイルID (DIR_COLLISION_MAP) -> [定数名, 説明] (include/constants/collision_map.h in boktai2 decomp)
+export const COLLISION_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(collisions)}
 };
 
 // スクリプトID -> [名前, 説明] (include/constants/script.h in boktai2 decomp)

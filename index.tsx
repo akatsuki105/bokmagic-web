@@ -9,6 +9,7 @@ import { BgPaletteViewer } from "./view_bgpltt.tsx";
 import { TilesetViewer } from "./view_tileset.tsx";
 import { ScriptViewer } from "./view_script.tsx";
 import { TilemapViewer } from "./view_tilemap.tsx";
+import { CollisionViewer } from "./view_collision.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
@@ -18,6 +19,7 @@ const TABS = [
   ["bgpltt", "BG Palette"],
   ["tileset", "Tileset"],
   ["tilemap", "Tilemap"],
+  ["collision", "Collision"],
   ["script", "Script"],
 ] as const;
 type Tab = typeof TABS[number][0];
@@ -106,6 +108,7 @@ const App = () => {
           {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
           {tab === "tileset" && <TilesetViewer rom={rom} />}
           {tab === "tilemap" && <TilemapViewer rom={rom} />}
+          {tab === "collision" && <CollisionViewer rom={rom} />}
           {tab === "script" && <ScriptViewer rom={rom} />}
         </div>
       )}
