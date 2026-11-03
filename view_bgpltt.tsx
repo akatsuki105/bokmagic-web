@@ -4,16 +4,8 @@ import { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
-import { BGP_NAMES } from "./names.ts";
 import { BGPLTT_REFS } from "./bgpltt_refs.ts";
-import { ColorTable, hex4, NumberStepper, Swatches } from "./components.tsx";
-
-// withDesc が false なら定数名まで
-const bgpLabel = (id: number, withDesc = true) => {
-  const name = BGP_NAMES[id];
-  if (!name) return hex4(id);
-  return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
-};
+import { bgpLabel, ColorTable, NumberStepper, Swatches } from "./components.tsx";
 
 export const BgPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);

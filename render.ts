@@ -77,3 +77,33 @@ export const renderObjs = (objs: Obj[], bounds: Bounds = objBounds(objs)): Rende
 
   return { image, originX: -bounds.left, originY: -bounds.top };
 };
+
+// 4bpp の 8x8 タイルを tileNums の順に cols 枚ずつ並べて描く (タイルセットやタイルマップの確認用)
+// pltt は RGBA8888[16], transparent0 なら色0 は描かない
+export const renderTileGrid = (tiles: Uint8Array, tileNums: ArrayLike<number>, cols: number, pltt: Uint32Array, transparent0 = true): Rendered => {
+  const rows = Math.max(1, Math.ceil(tileNums.length / cols));
+  const width = cols * 8;
+  const image = new ImageData(width, rows * 8);
+  const out = new Uint32Array(image.data.buffer);
+  for (let k = 0; k < tileNums.length; k++) {
+    const base = tileNums[k] * 32;
+    const ox = (k % cols) * 8;
+    const oy = Math.floor(k / cols) * 8;
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        const byte = tiles[base + y * 4 + (x >> 1)];
+        if (byte === undefined) continue;
+        const c = (x & 1) ? byte >> 4 : byte & 0xF;
+        if (c === 0 && transparent0) continue;
+        out[(oy + y) * width + ox + x] = pltt[c];
+      }
+    }
+  }
+  return { image, originX: 0, originY: 0 };
+};
+
+// パレットが決まらないときの 16 階調 (色0 が黒, 色15 が白)
+export const GRAYSCALE_PLTT = Uint32Array.from({ length: 16 }, (_, i) => {
+  const v = i * 17;
+  return ((0xFF << 24) | (v << 16) | (v << 8) | v) >>> 0;
+});

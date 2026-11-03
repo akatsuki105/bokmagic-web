@@ -6,6 +6,7 @@ import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
 import { ObjPaletteViewer } from "./view_objpltt.tsx";
 import { BgPaletteViewer } from "./view_bgpltt.tsx";
+import { TilesetViewer } from "./view_tileset.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
@@ -13,6 +14,7 @@ const TABS = [
   ["aux", "AuxSprite"],
   ["objpltt", "OBJ Palette"],
   ["bgpltt", "BG Palette"],
+  ["tileset", "Tileset"],
 ] as const;
 type Tab = typeof TABS[number][0];
 
@@ -97,6 +99,7 @@ const App = () => {
           {tab === "aux" && <AuxSpriteViewer rom={rom} />}
           {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
           {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
+          {tab === "tileset" && <TilesetViewer rom={rom} />}
         </div>
       )}
     </div>

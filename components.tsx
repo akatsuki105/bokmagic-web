@@ -4,7 +4,9 @@ import { FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
-import { SPRITE_NAMES } from "./names.ts";
+import { BGP_NAMES, SPRITE_NAMES } from "./names.ts";
+import type { BgPlttFile } from "./bgpltt.ts";
+import { GRAYSCALE_PLTT } from "./render.ts";
 
 export const hex4 = (n: number) => `0x${n.toString(16).toUpperCase().padStart(4, "0")}`;
 
@@ -13,6 +15,13 @@ export const spriteLabel = (id: number, withDesc = true) => {
   const name = SPRITE_NAMES[id];
   if (!name) return hex4(id);
   return withDesc ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
+};
+
+// BG パレットのファイル, withDesc が false なら定数名まで
+export const bgpLabel = (id: number, withDesc = true) => {
+  const name = BGP_NAMES[id];
+  if (!name) return hex4(id);
+  return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };
 
 export const flagNames = (v: number, names: [number, string][]) => names.filter(([bit]) => v & bit).map(([, n]) => n).join("|") || "0";
@@ -48,8 +57,9 @@ export const useFrameLoop = (enabled: boolean, onFrame: () => void, onDraw: () =
   }, [enabled]);
 };
 
-// origin が true なら原点に十字を描く
-export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number; origin?: boolean }> = ({ rendered, scale, origin }) => {
+// origin が true なら原点に十字を描く, grid を渡すとその間隔 (画像のピクセル単位) で格子を重ねる
+// onHover には画像のピクセル単位の座標を渡す (外に出たら -1, -1)
+export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number; origin?: boolean; grid?: number; onHover?: (x: number, y: number) => void }> = ({ rendered, scale, origin, grid, onHover }) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const { image } = rendered;
 
@@ -58,9 +68,15 @@ export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number
     ctx?.putImageData(image, 0, 0);
   }, [image]);
 
+  const hover = onHover && ((e: MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    onHover(Math.floor((e.clientX - r.left) / scale), Math.floor((e.clientY - r.top) / scale));
+  });
+
   return (
-    <div class="canvas-wrap" style={{ width: image.width * scale, height: image.height * scale }}>
+    <div class="canvas-wrap" style={{ width: image.width * scale, height: image.height * scale }} onMouseMove={hover} onMouseLeave={onHover && (() => onHover(-1, -1))}>
       <canvas ref={ref} width={image.width} height={image.height} style={{ width: image.width * scale, height: image.height * scale }} />
+      {grid && <div class="grid-overlay" style={{ backgroundSize: `${grid * scale}px ${grid * scale}px` }} />}
       {origin && <div class="origin-x" style={{ top: rendered.originY * scale }} />}
       {origin && <div class="origin-y" style={{ left: rendered.originX * scale }} />}
     </div>
@@ -162,3 +178,26 @@ const PoseThumb: FunctionComponent<{ poseIdx: number; render: (i: number) => Ren
   const { width, height } = rendered.image;
   return <SpriteCanvas rendered={rendered} scale={Math.min(1, 64 / Math.max(width, height))} />;
 };
+
+// BG の4bppタイルに当てるパレットの選択, file が null ならグレースケール
+export type BgPlttChoice = { file: number | null; row: number };
+
+// BgPlttChoice の16色 (RGBA8888)
+export const bgPlttColors = (files: BgPlttFile[], choice: BgPlttChoice): Uint32Array => {
+  const f = files.find((f) => f.id === choice.file);
+  return f ? f.colors.subarray(choice.row * 16, choice.row * 16 + 16) : GRAYSCALE_PLTT;
+};
+
+export const BgPlttSelect: FunctionComponent<{ files: BgPlttFile[]; value: BgPlttChoice; onChange: (v: BgPlttChoice) => void; rowSelectable?: boolean }> = ({ files, value, onChange, rowSelectable = true }) => (
+  <span class="stepper">
+    <label>
+      BG palette{" "}
+      <select value={value.file ?? ""} onChange={(e) => onChange({ ...value, file: e.currentTarget.value === "" ? null : Number(e.currentTarget.value) })}>
+        <option value="">(grayscale)</option>
+        {files.map((f) => <option key={f.id} value={f.id}>{bgpLabel(f.id, false)}</option>)}
+      </select>
+    </label>
+    {rowSelectable && value.file !== null && <NumberStepper label="palette" value={value.row} min={0} max={15} onChange={(row) => onChange({ ...value, row })} />}
+    {rowSelectable && <Swatches colors={bgPlttColors(files, value)} start={0} />}
+  </span>
+);
