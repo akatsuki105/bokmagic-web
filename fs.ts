@@ -7,6 +7,7 @@ export const DIR_ANIMATION = 0x922E;
 export const DIR_AUX_SPRITE = 0x98F5;
 export const DIR_MAIN_SPRITE = 0xCB05;
 export const DIR_TILESET = 0xCEEF;
+export const DIR_TILE_MAP = 0xC091;
 
 // GetFile が gFS を引く前に置き換える (ディレクトリID, ファイルID) の組
 const DIR_REMAP: Record<number, [number, number]> = {
@@ -16,6 +17,7 @@ const DIR_REMAP: Record<number, [number, number]> = {
   [DIR_AUX_SPRITE]: [0x9B05, 0x2117],
   [DIR_MAIN_SPRITE]: [0xC8E5, 0x5F29],
   [DIR_TILESET]: [0xCEE5, 0x4F2D],
+  [DIR_TILE_MAP]: [0xC305, 0xE53E],
 };
 
 // gFS (FSEntry[12]) の ROM オフセット
@@ -55,6 +57,11 @@ export class FileSystem {
       files.push({ id: rom.getUint16(ids + i * 2, true), offset: d + rom.getUint32(offsets + i * 4, true) });
     }
     return files;
+  }
+
+  // gFS のエントリが指す先 (ROM オフセット) をそのまま返す, gScriptDirectory のように Directory の形をしていないもの用
+  rawEntry(fsID: number): number | undefined {
+    return this.dirs.get(fsID >>> 0);
   }
 
   // GetFile(dirID, fileID), なければ undefined

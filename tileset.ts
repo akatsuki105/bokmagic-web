@@ -43,3 +43,10 @@ export const parseTileSets = (rom: DataView, fs: FileSystem): TileSet[] =>
     const tiles = new Uint8Array(rom.buffer, rom.byteOffset + offset + tilesOfs, tileCount * 32);
     return { id, unk_2: u16(0x02), refCount, parts, tiles };
   });
+
+// 部品が VRAM に並べるタイルを、並ぶ順に詰めたもの (Video_LoadTileSetParts が DMA で流す内容)
+export const partTiles = (ts: TileSet, part: TileSetPart): Uint8Array => {
+  const out = new Uint8Array(part.tileCount * 32);
+  part.refs.forEach((r, k) => out.set(ts.tiles.subarray(r * 32, r * 32 + 32), k * 32));
+  return out;
+};

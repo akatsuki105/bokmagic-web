@@ -7,6 +7,8 @@ import { AuxSpriteViewer } from "./view_aux.tsx";
 import { ObjPaletteViewer } from "./view_objpltt.tsx";
 import { BgPaletteViewer } from "./view_bgpltt.tsx";
 import { TilesetViewer } from "./view_tileset.tsx";
+import { ScriptViewer } from "./view_script.tsx";
+import { TilemapViewer } from "./view_tilemap.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
@@ -15,10 +17,13 @@ const TABS = [
   ["objpltt", "OBJ Palette"],
   ["bgpltt", "BG Palette"],
   ["tileset", "Tileset"],
+  ["tilemap", "Tilemap"],
+  ["script", "Script"],
 ] as const;
 type Tab = typeof TABS[number][0];
 
-const tabFromHash = (): Tab => TABS.find(([id]) => `#${id}` === location.hash)?.[0] ?? "main";
+// #tab または #tab/... (タブの中の選択はタブ側が読む)
+const tabFromHash = (): Tab => TABS.find(([id]) => location.hash.slice(1).split("/")[0] === id)?.[0] ?? "main";
 
 const App = () => {
   const [rom, setRom] = useState<ROMFile | null>(null);
@@ -100,6 +105,8 @@ const App = () => {
           {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
           {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
           {tab === "tileset" && <TilesetViewer rom={rom} />}
+          {tab === "tilemap" && <TilemapViewer rom={rom} />}
+          {tab === "script" && <ScriptViewer rom={rom} />}
         </div>
       )}
     </div>

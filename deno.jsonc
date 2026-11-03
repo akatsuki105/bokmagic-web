@@ -9,7 +9,11 @@
   "fmt": {
     "options": {
       "lineWidth": 1000 // I hate line wrapping
-    }
+    },
+    "exclude": ["bokcc/"] // boktai2 decomp からのコピーなので手を入れない
+  },
+  "lint": {
+    "exclude": ["bokcc/"]
   },
   "tasks": {
     "dev:bundle": "deno bundle --sourcemap --watch --platform=browser index.tsx -o bundle.js",

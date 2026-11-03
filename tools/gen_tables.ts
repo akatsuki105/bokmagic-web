@@ -1,5 +1,6 @@
 // boktai2 decomp のヘッダとソースから、ビューワが使う表を作る
-// - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID の定数名 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h)
+// - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID, スクリプトID, 文字列ID の定数名
+//   タイルマップのファイルID (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h)
 // - aux_anims.ts: AuxSprite とアニメファイルの組 (ソース中で一緒に使われているもの)
 // - bgpltt_refs.ts: BG パレットがソース中で読まれている場所
 // e.g. deno run --allow-read --allow-write tools/gen_tables.ts ~/Dev/GBA/ret/boktai2/boktai2
@@ -40,6 +41,15 @@ const parseDefines = (src: string, prefix: RegExp): Define[] => {
 const sprites = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite.h`), /^SPRITE_/);
 const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite_animation.h`), /^ANI?M_/);
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
+const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);
+const strings = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/strings.h`), /^(STR|BIN)_/);
+
+// `#define Script_StaffRoll Script_0x1040 // desc` を拾う
+const scriptNames: Define[] = [];
+for (const line of (await Deno.readTextFile(`${decomp}/include/constants/script.h`)).split("\n")) {
+  const m = line.match(/^#define (Script_\w+)\s+Script_0x([0-9A-Fa-f]+)\s*(?:\/\/\s*(.*))?$/);
+  if (m) scriptNames.push({ name: m[1], id: parseInt(m[2], 16), desc: m[3] ?? "" });
+}
 
 // 同じIDに複数の名前があれば先に書かれた方を採る
 const nameTable = (defs: Define[]) => {
@@ -70,6 +80,21 @@ ${nameTable(anims)}
 // BG パレットのファイルID (DIR_BGPLTT) -> [定数名, 説明] (include/bg_pltt.h in boktai2 decomp)
 export const BGP_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(bgPltts)}
+};
+
+// タイルマップのファイルID (DIR_TILE_MAP) -> [定数名, 説明] (include/constants/tilemap.h in boktai2 decomp)
+export const TILEMAP_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(tilemaps)}
+};
+
+// スクリプトID -> [名前, 説明] (include/constants/script.h in boktai2 decomp)
+export const SCRIPT_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(scriptNames)}
+};
+
+// 文字列ID (StringRef) -> [定数名, 説明] (include/constants/strings.h in boktai2 decomp)
+export const STRING_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(strings)}
 };
 `,
 );
