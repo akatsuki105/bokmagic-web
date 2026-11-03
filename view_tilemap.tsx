@@ -12,7 +12,7 @@ import { GRAYSCALE_PLTT, renderTileGrid } from "./render.ts";
 import { type MapLoads, mapLoadsByTilemap } from "./analysis.ts";
 import type { LoadCall } from "./script_scan.ts";
 import { scriptHref } from "./view_script.tsx";
-import { TILEMAP_NAMES } from "./names.ts";
+import { TILEMAP_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { bgpLabel, type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 

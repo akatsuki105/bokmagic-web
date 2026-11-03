@@ -4,7 +4,7 @@ import { FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
-import { BGP_NAMES, SPRITE_NAMES } from "./names.ts";
+import { BGP_NAMES, SPRITE_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import type { BgPlttFile } from "./bgpltt.ts";
 import { GRAYSCALE_PLTT } from "./render.ts";

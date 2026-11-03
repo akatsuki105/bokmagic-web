@@ -7,8 +7,8 @@ import type { ROMFile } from "./rom.ts";
 import { auxPoseToObjs, type AuxSpriteGfx, parseAuxSprites } from "./sprite_aux.ts";
 import { ANIM_PLAY_REVERSE, ANIM_PLAY_XFLIP, ANIM_PLAY_YFLIP, type AuxAnimFile, AuxAnimState, cmdDuration, cmdFlip, cmdPose, parseAuxAnimFiles } from "./anim_aux.ts";
 import { renderObjs } from "./render.ts";
-import { AUX_ANIM_REFS } from "./aux_anims.ts";
-import { ANIM_NAMES } from "./names.ts";
+import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
+import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { flagNames, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop } from "./components.tsx";
 

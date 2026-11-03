@@ -8,7 +8,7 @@ import { parseParticleFiles, type ParticleFile, type ParticleGroup, particlePose
 import { type AuxAnimFile, parseAuxAnimFiles } from "./anim_aux.ts";
 import { OBJ_SIZE, renderObjs } from "./render.ts";
 import { AuxAnimPanel } from "./view_aux.tsx";
-import { PARTICLE_ANIM_REFS, PARTICLE_GROUP_NAMES, PARTICLE_PLTT_REFS, PARTICLE_POSE_NAMES } from "./particle_refs.ts";
+import { PARTICLE_ANIM_REFS, PARTICLE_GROUP_NAMES, PARTICLE_PLTT_REFS, PARTICLE_POSE_NAMES } from "./generated/particle_refs.ts";
 import { decomp } from "./decomp.ts";
 import { hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas } from "./components.tsx";
 

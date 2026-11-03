@@ -8,7 +8,7 @@ import { collisionFiles, type CollisionMap, parseCollisionMap } from "./collisio
 import { collisionLoads } from "./analysis.ts";
 import { scriptHref } from "./view_script.tsx";
 import { tilemapHref } from "./view_tilemap.tsx";
-import { COLLISION_NAMES } from "./names.ts";
+import { COLLISION_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
 

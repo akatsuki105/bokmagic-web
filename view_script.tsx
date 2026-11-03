@@ -7,7 +7,7 @@ import type { ROMFile } from "./rom.ts";
 import { decodeScript, type ScriptEntry } from "./script.ts";
 import { scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
-import { SCRIPT_NAMES, STRING_NAMES } from "./names.ts";
+import { SCRIPT_NAMES, STRING_NAMES } from "./generated/names.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
 import { hashID, hex4, useHashID } from "./components.tsx";
 
@@ -79,17 +79,17 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
       <p>
         ID: {hex4(script.id)}, ROM: 0x{(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}, variables: {script.varCount}
       </p>
-      {aliases.length > 0 && (
-        <p>
-          同じ実体: <ScriptLinks ids={aliases.map((s) => s.id)} />
-        </p>
-      )}
       <p>
         called by: {callers.length > 0 ? <ScriptLinks ids={callers} /> : "(定数で呼んでいるスクリプトは無し)"}
       </p>
       <pre class="bokc">
         <LinkedText text={text} />
       </pre>
+      {aliases.length > 0 && (
+        <p>
+          同じ実体: <ScriptLinks ids={aliases.map((s) => s.id)} />
+        </p>
+      )}
     </div>
   );
 };

@@ -4,7 +4,7 @@ import { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
-import { BGPLTT_REFS } from "./bgpltt_refs.ts";
+import { BGPLTT_REFS } from "./generated/bgpltt_refs.ts";
 import { decomp } from "./decomp.ts";
 import { bgpLabel, ColorTable, NumberStepper, Swatches } from "./components.tsx";
 

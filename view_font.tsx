@@ -5,8 +5,8 @@ import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "./font.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
-import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./charmap.ts";
-import { decomp } from "./decomp.ts";
+import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./generated/charmap.ts";
+import { decomp, hasDecompTables } from "./decomp.ts";
 import { bgpLabel, hex4, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
 
 // Font_SetPltt が 14・15 本目を差し替えるのに使う BG パレット (0: BGP_529C, 1: BGP_539C)
@@ -14,6 +14,7 @@ const FONT_PLTTS = [0x529C, 0x539C];
 const FONT_PLTT_ROW = 15; // Font_DrawHankakuChar / Font_DrawZenkakuChar はマップに常に 15 本目を書く
 
 // 字形番号を文字コードに戻す (半角: + 0x20, 全角: (0x80 | 上位) と 下位の2バイト)
+// U32J の text_renderer.c から読んだ変換なので、ほかの作品 (文字コードが違う) では使わない
 const codeOf = (kind: GlyphKind, g: number) => (kind === "hankaku" ? (g + 0x20).toString(16).toUpperCase().padStart(2, "0") : `${((g >> 8) | 0x80).toString(16).toUpperCase()} ${(g & 0xFF).toString(16).toUpperCase().padStart(2, "0")}`);
 
 export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
@@ -73,7 +74,7 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           </label>
         </div>
         <p class="mono">
-          {hover >= 0 && hover < count ? `#${hover} (0x${hover.toString(16).toUpperCase()}) code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : "字形にマウスを乗せると番号と文字を表示します (style は Font_AcquireGlyph と同じく各ドットに style << 2 を OR する)"}
+          {hover >= 0 && hover < count ? `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)") : "字形にマウスを乗せると番号と文字を表示します (style は Font_AcquireGlyph と同じく各ドットに style << 2 を OR する)"}
         </p>
         <SpriteCanvas
           rendered={rendered}

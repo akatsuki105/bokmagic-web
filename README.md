@@ -5,7 +5,7 @@
 ## 対応している ROM
 
 - 続・ボクらの太陽 (U32J rev1)
-- 新・ボクらの太陽 (U33J): 名前 (スプライト名、スクリプト名、文字の対応など) は boktai2 decomp から作った U32J 用のものなので出さない
+- 新・ボクらの太陽 (U33J): 名前 (スプライト名、スクリプト名など) は boktai2 decomp から作った U32J 用のものなので出さない. 文字コードも U32J とは違い、まだ分かっていないので、フォントの文字コードと文字は出さない
 
 ## Build
 
@@ -23,9 +23,15 @@ $ deno task dev
 
 ## Generated tables
 
-`names.ts` (スプライト、アニメファイル、BG パレットの定数名)、`aux_anims.ts` (AuxSprite とアニメファイルの組)、`bgpltt_refs.ts` (BG パレットが読まれている場所) は boktai2 decomp のヘッダとソースから生成する
+`generated/` 以下は boktai2 decomp のヘッダとソースから `tools/gen_tables.ts` で生成する (手で編集しない)
+
+- `names.ts`: スプライト、アニメファイル、BG パレット、タイルマップ、当たり判定マップ、スクリプト、文字列の定数名
+- `aux_anims.ts`: AuxSprite とアニメファイルの組
+- `bgpltt_refs.ts`: BG パレットが読まれている場所
+- `particle_refs.ts`: パーティクルのグループ名・ポーズ名と、一緒に使われるアニメファイル・OBJ パレット
+- `charmap.ts`: フォントの字形番号 -> 文字 (charmap.txt)
 
 ```sh
 $ deno run --allow-read --allow-write tools/gen_tables.ts <path/to/boktai2>
-$ deno fmt names.ts aux_anims.ts bgpltt_refs.ts
+$ deno fmt generated/
 ```
