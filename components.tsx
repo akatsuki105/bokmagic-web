@@ -57,9 +57,9 @@ export const useFrameLoop = (enabled: boolean, onFrame: () => void, onDraw: () =
   }, [enabled]);
 };
 
-// origin が true なら原点に十字を描く, grid を渡すとその間隔 (画像のピクセル単位) で格子を重ねる
+// origin が true なら原点に十字を描く, grid を渡すとその間隔 (画像のピクセル単位, [横, 縦] でも可) で格子を重ねる
 // onHover には画像のピクセル単位の座標を渡す (外に出たら -1, -1)
-export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number; origin?: boolean; grid?: number; onHover?: (x: number, y: number) => void }> = ({ rendered, scale, origin, grid, onHover }) => {
+export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number; origin?: boolean; grid?: number | [number, number]; onHover?: (x: number, y: number) => void }> = ({ rendered, scale, origin, grid, onHover }) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const { image } = rendered;
 
@@ -76,7 +76,7 @@ export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number
   return (
     <div class="canvas-wrap" style={{ width: image.width * scale, height: image.height * scale }} onMouseMove={hover} onMouseLeave={onHover && (() => onHover(-1, -1))}>
       <canvas ref={ref} width={image.width} height={image.height} style={{ width: image.width * scale, height: image.height * scale }} />
-      {grid && <div class="grid-overlay" style={{ backgroundSize: `${grid * scale}px ${grid * scale}px` }} />}
+      {grid && <div class="grid-overlay" style={{ backgroundSize: typeof grid === "number" ? `${grid * scale}px ${grid * scale}px` : `${grid[0] * scale}px ${grid[1] * scale}px` }} />}
       {origin && <div class="origin-x" style={{ top: rendered.originY * scale }} />}
       {origin && <div class="origin-y" style={{ left: rendered.originX * scale }} />}
     </div>

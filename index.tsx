@@ -9,6 +9,7 @@ import { ObjPaletteViewer } from "./view_objpltt.tsx";
 import { BgPaletteViewer } from "./view_bgpltt.tsx";
 import { TilesetViewer } from "./view_tileset.tsx";
 import { ScriptViewer } from "./view_script.tsx";
+import { FontViewer } from "./view_font.tsx";
 import { TilemapViewer } from "./view_tilemap.tsx";
 import { CollisionViewer } from "./view_collision.tsx";
 
@@ -22,6 +23,7 @@ const TABS = [
   ["tileset", "Tileset"],
   ["tilemap", "Tilemap"],
   ["collision", "Collision"],
+  ["font", "Font"],
   ["script", "Script"],
 ] as const;
 type Tab = typeof TABS[number][0];
@@ -112,6 +114,7 @@ const App = () => {
           {tab === "tileset" && <TilesetViewer rom={rom} />}
           {tab === "tilemap" && <TilemapViewer rom={rom} />}
           {tab === "collision" && <CollisionViewer rom={rom} />}
+          {tab === "font" && <FontViewer rom={rom} />}
           {tab === "script" && <ScriptViewer rom={rom} />}
         </div>
       )}
