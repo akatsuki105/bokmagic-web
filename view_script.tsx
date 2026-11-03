@@ -85,12 +85,19 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
       <pre class="bokc">
         <LinkedText text={text} />
       </pre>
-      {aliases.length > 0 && (
-        <p>
-          同じ実体: <ScriptLinks ids={aliases.map((s) => s.id)} />
-        </p>
-      )}
+      {aliases.length > 0 && <Aliases ids={aliases.map((s) => s.id)} />}
     </div>
+  );
+};
+
+// 同じ実体を持つスクリプトID, 数千件あることもあるので開いたときだけリンクを作る
+const Aliases: FunctionComponent<{ ids: number[] }> = ({ ids }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <details class="aliases" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>同じ実体 ({ids.length})</summary>
+      {open && <ScriptLinks ids={ids} />}
+    </details>
   );
 };
 
