@@ -112,6 +112,33 @@
       .thumb.selected {
         border-color: #4a6cff;
       }
+      .anim-panel {
+        margin: 0.5em 0;
+        padding: 0.5em;
+        border: 1px solid light-dark(#ccc, #444);
+      }
+      .anim-panel .controls + .controls {
+        margin-top: 0.5em;
+      }
+      .anim-status {
+        font-family: monospace;
+        margin: 0.5em 0;
+      }
+      .anim-cmds {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        font-family: monospace;
+        font-size: 12px;
+      }
+      .anim-cmd {
+        padding: 1px 4px;
+        border: 1px solid light-dark(#ccc, #444);
+        cursor: pointer;
+      }
+      .anim-cmd.current {
+        background: light-dark(#cfd8ff, #3a4470);
+      }
       .thumb .canvas-wrap {
         margin: 0;
       }
