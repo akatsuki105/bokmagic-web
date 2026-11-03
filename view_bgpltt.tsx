@@ -6,18 +6,25 @@ import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { BGPLTT_REFS } from "./generated/bgpltt_refs.ts";
 import { decomp } from "./decomp.ts";
-import { bgpLabel, ColorTable, NumberStepper, Swatches } from "./components.tsx";
+import { bgpLabel, ColorTable, hashID, hex4, NumberStepper, Swatches, useHashID } from "./components.tsx";
+
+export const bgplttHref = (id: number) => `#bgpltt/${hex4(id)}`;
 
 export const BgPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
-  const [selected, setSelected] = useState<BgPlttFile>(files[0]);
+  const byID = (id: number | undefined) => files.find((f) => f.id === id);
+  const [selected, setSelected] = useState<BgPlttFile>(byID(hashID("bgpltt")) ?? files[0]);
+  useHashID("bgpltt", (id) => {
+    const f = byID(id);
+    if (f) setSelected(f);
+  });
 
   return (
     <div class="viewer">
       <ul class="sprite-list">
         {files.map((f) => (
-          <li key={f.id} class={f === selected ? "selected" : ""} onClick={() => setSelected(f)} title={decomp(BGPLTT_REFS)[f.id]}>
-            {bgpLabel(f.id, false)}
+          <li key={f.id} class={f === selected ? "selected" : ""} title={decomp(BGPLTT_REFS)[f.id]}>
+            <a href={bgplttHref(f.id)}>{bgpLabel(f.id, false)}</a>
           </li>
         ))}
       </ul>

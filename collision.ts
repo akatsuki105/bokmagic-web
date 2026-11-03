@@ -137,3 +137,28 @@ export const tileQuad = (c: CollisionMap, tx: number, tz: number): [number, numb
   const x0 = tx * 256, x1 = x0 + 256, z0 = tz * 256, z1 = z0 + 256;
   return [projectToTilemap(c, x0, z0, h00), projectToTilemap(c, x1, z0, h10), projectToTilemap(c, x1, z1, h11), projectToTilemap(c, x0, z1, h01)];
 };
+
+// 点が凸四角形 q の中にあるか (辺の外積の符号がそろっているか)
+const inQuad = (q: [number, number][], x: number, y: number) => {
+  let sign = 0;
+  for (let k = 0; k < 4; k++) {
+    const [ax, ay] = q[k], [bx, by] = q[(k + 1) % 4];
+    const c = (bx - ax) * (y - ay) - (by - ay) * (x - ax);
+    if (c === 0) continue;
+    if (sign === 0) sign = Math.sign(c);
+    else if (Math.sign(c) !== sign) return false;
+  }
+  return true;
+};
+
+// タイルマップのピクセル (px, py) に上面が見えているタイル, 手前 (x + z が大きい) のものを優先する
+export const tileAtTilemap = (c: CollisionMap, px: number, py: number): [number, number] | null => {
+  let best: [number, number] | null = null;
+  for (let z = 0; z < c.height; z++) {
+    for (let x = 0; x < c.width; x++) {
+      if (best && x + z <= best[0] + best[1]) continue;
+      if (inQuad(tileQuad(c, x, z), px, py)) best = [x, z];
+    }
+  }
+  return best;
+};

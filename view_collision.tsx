@@ -194,16 +194,16 @@ const CollisionView: FunctionComponent<{
   );
 };
 
-const HoverInfo: FunctionComponent<{ map: CollisionMap; x: number; y: number }> = ({ map, x, y }) => {
-  if (x < 0 || x >= map.width || y < 0 || y >= map.height) return <span>マウスを乗せるとタイルの値を表示します</span>;
+// タイル (x, y) の値の説明
+export const collisionTileText = (map: CollisionMap, x: number, y: number): string => {
   const t = map.tiles[y * map.width + x];
   const zones = map.zones.filter((z) => x * 256 + 128 >= z.x1 && x * 256 + 128 < z.x2 && y * 256 + 128 >= z.y1 && y * 256 + 128 < z.y2).map((z) => hex4(z.id));
-  return (
-    <span>
-      ({x}, {y}) 高さ {t.height}, 階段 {STAIRS_NAMES[t.stairs] ?? t.stairs}, occluder {t.occluder === 0xFF ? "なし" : t.occluder}, attr {hex4(t.attr)} {attrNames(t.attr)}
-      {zones.length > 0 && `, zone ${zones.join(" ")}`}
-    </span>
-  );
+  return `(${x}, ${y}) 高さ ${t.height}, 階段 ${STAIRS_NAMES[t.stairs] ?? t.stairs}, occluder ${t.occluder === 0xFF ? "なし" : t.occluder}, attr ${hex4(t.attr)} ${attrNames(t.attr)}` + (zones.length > 0 ? `, zone ${zones.join(" ")}` : "");
+};
+
+const HoverInfo: FunctionComponent<{ map: CollisionMap; x: number; y: number }> = ({ map, x, y }) => {
+  if (x < 0 || x >= map.width || y < 0 || y >= map.height) return <span>マウスを乗せるとタイルの値を表示します</span>;
+  return <span>{collisionTileText(map, x, y)}</span>;
 };
 
 const CollisionCanvas: FunctionComponent<{ map: CollisionMap; mode: Mode; overlays: Overlays; cell: number; highlight: number | null; onHover: (x: number, y: number) => void }> = ({ map, mode, overlays, cell, highlight, onHover }) => {

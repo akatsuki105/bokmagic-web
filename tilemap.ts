@@ -111,13 +111,16 @@ const drawMetatile = (out: Uint32Array, width: number, x: number, y: number, map
   }
 };
 
-// レイヤを layers の順 (奥 -> 手前) に重ねて描く, 大きさは一番大きいレイヤに合わせる
+// 重ねて描くレイヤ1枚: タイルマップ (メタタイルの定義) とそのレイヤ、タイルを読む VRAM (BG のキャラクタブロックの先頭から)
+export type LayerSource = { map: Tilemap; layer: TilemapLayer; vram: Uint8Array };
+
+// レイヤを items の順 (奥 -> 手前) に重ねて描く, 大きさは一番大きいレイヤに合わせる
 // transparent0 は一番奥のレイヤにだけ効き、それより手前のレイヤの色0 は常に透明
-export const renderLayers = (map: Tilemap, layers: TilemapLayer[], vram: Uint8Array, colors: Uint32Array, transparent0: boolean): Rendered => {
-  const width = Math.max(16, ...layers.map((l) => l.width * 16)), height = Math.max(16, ...layers.map((l) => l.height * 16));
+export const renderComposite = (items: LayerSource[], colors: Uint32Array, transparent0: boolean): Rendered => {
+  const width = Math.max(16, ...items.map((s) => s.layer.width * 16)), height = Math.max(16, ...items.map((s) => s.layer.height * 16));
   const image = new ImageData(width, height);
   const out = new Uint32Array(image.data.buffer);
-  layers.forEach((layer, k) => {
+  items.forEach(({ map, layer, vram }, k) => {
     for (let my = 0; my < layer.height; my++) {
       for (let mx = 0; mx < layer.width; mx++) {
         drawMetatile(out, width, mx * 16, my * 16, map, layer.mtmap[mtmapIndex(layer, mx, my)], vram, colors, k > 0 || transparent0);
@@ -126,6 +129,12 @@ export const renderLayers = (map: Tilemap, layers: TilemapLayer[], vram: Uint8Ar
   });
   return { image, originX: 0, originY: 0 };
 };
+
+export const renderLayers = (map: Tilemap, layers: TilemapLayer[], vram: Uint8Array, colors: Uint32Array, transparent0: boolean): Rendered => renderComposite(layers.map((layer) => ({ map, layer, vram })), colors, transparent0);
+
+// '.t' (BG の構成) が 0 と 6 のときは、その BG のキャラクタブロックを 2 (VRAM の 0x8000) にし、ファイル内のタイルも loadOffset によらずそこに置く
+// それ以外はキャラクタブロック 0 で、タイルは loadOffset に置く (Video_SetupBGLayout)
+export const layoutCharBase = (layout: number) => (layout === 0 || layout === 6 ? 0x8000 : 0);
 
 // Cmd_LoadTileMap の '.t' (BG の構成) ごとに、レイヤを割り当てる BG の並び (Video_SetupBGLayout の分岐表)
 // 1, 4, 5 は '.n' が 2 のときだけ2つ目の BG を使う

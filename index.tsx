@@ -12,6 +12,7 @@ import { ScriptViewer } from "./view_script.tsx";
 import { FontViewer } from "./view_font.tsx";
 import { TilemapViewer } from "./view_tilemap.tsx";
 import { CollisionViewer } from "./view_collision.tsx";
+import { MapViewer } from "./view_map.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
@@ -21,6 +22,7 @@ const TABS = [
   ["objpltt", "OBJ Palette"],
   ["bgpltt", "BG Palette"],
   ["tileset", "Tileset"],
+  ["map", "Map"],
   ["tilemap", "Tilemap"],
   ["collision", "Collision"],
   ["font", "Font"],
@@ -119,6 +121,7 @@ const App = () => {
             {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
             {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
             {tab === "tileset" && <TilesetViewer rom={rom} />}
+            {tab === "map" && <MapViewer rom={rom} />}
             {tab === "tilemap" && <TilemapViewer rom={rom} />}
             {tab === "collision" && <CollisionViewer rom={rom} />}
             {tab === "font" && <FontViewer rom={rom} />}
