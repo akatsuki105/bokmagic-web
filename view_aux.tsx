@@ -74,7 +74,9 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
         </p>
       )}
       <AuxAnimPanel
-        gfx={gfx}
+        refs={AUX_ANIM_REFS[gfx.id] ?? []}
+        poseCount={gfx.poseCount}
+        poseLimit={gfx.poses.length}
         animFiles={animFiles}
         active={animActive}
         setActive={setAnimActive}
@@ -99,22 +101,26 @@ const ANIM_PLAY_FLAG_NAMES: [number, string][] = [
   [ANIM_PLAY_REVERSE, "REVERSE"],
 ];
 
-const animFileLabel = (f: AuxAnimFile, gfx: AuxSpriteGfx) => {
+// poseCount: スプライト自身のポーズ数, poseLimit: 添字で引けるポーズ数 (AuxSprite は後ろのエントリのポーズも引ける)
+const animFileLabel = (f: AuxAnimFile, poseCount: number, poseLimit: number) => {
   const name = ANIM_NAMES[f.id]?.[0] ?? hex4(f.id);
   // ポーズ番号がこのエントリに収まるか, 後ろのエントリまで使うか, ポーズ配列からはみ出すか
-  const fit = f.maxPose < gfx.poseCount ? "" : f.maxPose < gfx.poses.length ? " +" : " !";
+  const fit = f.maxPose < poseCount ? "" : f.maxPose < poseLimit ? " +" : " !";
   return `${name}${name.endsWith(hex4(f.id).slice(2)) ? "" : ` (${hex4(f.id)})`}, max pose ${f.maxPose}${fit}`;
 };
 
-// アニメファイルを選んで AuxAnimState で再生する, 1フレームごとに AuxSprite_AdvanceAnim と同じ処理で進め、AuxSprite に当たったポーズと反転を onPose で返す
-const AuxAnimPanel: FunctionComponent<{
-  gfx: AuxSpriteGfx;
+// アニメファイルを選んで AuxAnimState で再生する, 1フレームごとに AuxSprite_AdvanceAnim (particle なら Particle_AdvanceAnim) と同じ処理で進め、当たったポーズと反転を onPose で返す
+// refs はソースで一緒に使われているアニメファイルの候補
+export const AuxAnimPanel: FunctionComponent<{
+  refs: [anim: number, where: string][];
+  poseCount: number;
+  poseLimit: number;
+  particle?: boolean;
   animFiles: AuxAnimFile[];
   active: boolean;
   setActive: (v: boolean) => void;
   onPose: (poseIdx: number, xflip: boolean, yflip: boolean) => void;
-}> = ({ gfx, animFiles, active, setActive, onPose }) => {
-  const refs = AUX_ANIM_REFS[gfx.id] ?? [];
+}> = ({ refs, poseCount, poseLimit, particle = false, animFiles, active, setActive, onPose }) => {
   const refIDs = new Set(refs.map(([id]) => id));
   const [fileID, setFileID] = useState<number | null>(refs[0]?.[0] ?? null);
   const [animIdx, setAnimIdx] = useState(0);
@@ -185,7 +191,7 @@ const AuxAnimPanel: FunctionComponent<{
   };
 
   const advance = () => {
-    if (state.current.advance()) loops.current++;
+    if (particle ? state.current.advanceParticle() : state.current.advance()) loops.current++;
     frames.current++;
   };
 
@@ -204,11 +210,11 @@ const AuxAnimPanel: FunctionComponent<{
             <option value="">(none)</option>
             {refs.length > 0 && (
               <optgroup label="ソースで一緒に使われているもの">
-                {sortedFiles.filter((f) => refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, gfx)}</option>)}
+                {sortedFiles.filter((f) => refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
               </optgroup>
             )}
             <optgroup label="その他">
-              {sortedFiles.filter((f) => !refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, gfx)}</option>)}
+              {sortedFiles.filter((f) => !refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
             </optgroup>
           </select>
         </label>

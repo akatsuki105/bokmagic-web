@@ -4,6 +4,7 @@ import { LoadROM, type ROMFile } from "./rom.ts";
 import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
+import { ParticleViewer } from "./view_particle.tsx";
 import { ObjPaletteViewer } from "./view_objpltt.tsx";
 import { BgPaletteViewer } from "./view_bgpltt.tsx";
 import { TilesetViewer } from "./view_tileset.tsx";
@@ -15,6 +16,7 @@ import { CollisionViewer } from "./view_collision.tsx";
 const TABS = [
   ["main", "MainSprite"],
   ["aux", "AuxSprite"],
+  ["particle", "Particle"],
   ["objpltt", "OBJ Palette"],
   ["bgpltt", "BG Palette"],
   ["tileset", "Tileset"],
@@ -104,6 +106,7 @@ const App = () => {
           </nav>
           {tab === "main" && <MainSpriteViewer rom={rom} />}
           {tab === "aux" && <AuxSpriteViewer rom={rom} />}
+          {tab === "particle" && <ParticleViewer rom={rom} />}
           {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
           {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
           {tab === "tileset" && <TilesetViewer rom={rom} />}

@@ -9,6 +9,7 @@ export const DIR_MAIN_SPRITE = 0xCB05;
 export const DIR_TILESET = 0xCEEF;
 export const DIR_TILE_MAP = 0xC091;
 export const DIR_COLLISION_MAP = 0xAE6C;
+export const DIR_PARTICLE = 0xCEAA;
 
 // GetFile が gFS を引く前に置き換える (ディレクトリID, ファイルID) の組
 const DIR_REMAP: Record<number, [number, number]> = {
@@ -20,6 +21,7 @@ const DIR_REMAP: Record<number, [number, number]> = {
   [DIR_TILESET]: [0xCEE5, 0x4F2D],
   [DIR_TILE_MAP]: [0xC305, 0xE53E],
   [DIR_COLLISION_MAP]: [0xAF05, 0xAC2C],
+  [DIR_PARTICLE]: [0xCF05, 0x0A4D],
 };
 
 // gFS (FSEntry[12]) の ROM オフセット

@@ -107,6 +107,17 @@ export class AuxAnimState {
 
   // AuxSprite_AdvanceAnim, 今のコマを AuxSprite に当ててから1コマ分進める, 一巡したら true
   advance(): boolean {
+    return this.step(false);
+  }
+
+  // Particle_AdvanceAnim (include/particle.h), AuxSprite_AdvanceAnim とは次の2点だけが違う
+  // - 次のコマの wait が 0 になっても 1 に直さない (次のフレームで tick >= wait になるので結果は同じ)
+  // - duration を更新しない (後で AuxAnim_SetAnimSpeed したときの wait が変わる)
+  advanceParticle(): boolean {
+    return this.step(true);
+  }
+
+  private step(particle: boolean): boolean {
     const cmd = this.cmds[this.cmdIdx];
     this.poseIdx = cmdPose(cmd);
     this.xflip = (this.flags & ANIM_PLAY_XFLIP) !== (cmdFlip(cmd) & ANIM_PLAY_XFLIP);
@@ -130,8 +141,13 @@ export class AuxAnimState {
           finished = true;
         }
       }
-      this.duration = cmdDuration(this.cmds[this.cmdIdx]);
-      this.wait = ((this.duration * this.speed) >> 6) & 0xFF || 1;
+      const next = this.cmds[this.cmdIdx];
+      if (particle) {
+        this.wait = ((cmdDuration(next) * this.speed) >> 6) & 0xFF;
+      } else {
+        this.duration = cmdDuration(next);
+        this.wait = ((this.duration * this.speed) >> 6) & 0xFF || 1;
+      }
     }
     return finished;
   }
