@@ -1,18 +1,119 @@
 <!doctype html>
-<html lang="en">
+<html lang="ja">
   <head>
     <meta charset="utf-8" />
     <title>bokmagic-web</title>
     <style>
       :root {
         color-scheme: light dark;
+        --checker-a: light-dark(#ffffff, #3a3a3a);
+        --checker-b: light-dark(#d8d8d8, #303030);
       }
       body {
         color: light-dark(#333b3c, #f6f6f6);
         background-color: light-dark(#efedea, #282828);
+        font-family: sans-serif;
+        font-size: 14px;
       }
       .spacer-y {
         height: 1.5em;
+      }
+      .error {
+        color: #d33;
+      }
+      .viewer {
+        display: flex;
+        gap: 1em;
+        align-items: flex-start;
+      }
+      .sprite-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        flex-shrink: 0;
+        white-space: nowrap;
+        max-height: 90vh;
+        overflow-y: auto;
+        font-family: monospace;
+      }
+      .sprite-list li {
+        padding: 2px 4px;
+        cursor: pointer;
+      }
+      .sprite-list li.selected {
+        background: light-dark(#cfd8ff, #3a4470);
+      }
+      .sprite-view {
+        flex: 1;
+        min-width: 0;
+      }
+      .controls {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5em 1em;
+        align-items: center;
+      }
+      .controls input[type="number"] {
+        width: 5em;
+      }
+      .canvas-wrap {
+        position: relative;
+        margin: 0.5em 0;
+        background: repeating-conic-gradient(var(--checker-a) 0 25%, var(--checker-b) 0 50%) 0 0 / 16px 16px;
+      }
+      .canvas-wrap canvas {
+        display: block;
+        image-rendering: pixelated;
+      }
+      .origin-x,
+      .origin-y {
+        position: absolute;
+        background: rgb(255 0 0 / 0.5);
+        pointer-events: none;
+      }
+      .origin-x {
+        left: 0;
+        right: 0;
+        height: 1px;
+      }
+      .origin-y {
+        top: 0;
+        bottom: 0;
+        width: 1px;
+      }
+      .pltt-row {
+        display: flex;
+        align-items: center;
+        gap: 2px;
+        font-family: monospace;
+      }
+      .pltt-row > span:first-child {
+        width: 3em;
+      }
+      .swatch {
+        width: 14px;
+        height: 14px;
+      }
+      .thumbs {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+        margin-top: 1em;
+      }
+      .thumb {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 2px;
+        border: 1px solid transparent;
+        cursor: pointer;
+        font-size: 10px;
+      }
+      .thumb.selected {
+        border-color: #4a6cff;
+      }
+      .thumb .canvas-wrap {
+        margin: 0;
       }
     </style>
     <script type="module" src="./bundle.js"></script>
