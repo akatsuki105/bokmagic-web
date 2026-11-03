@@ -6,6 +6,7 @@ import { loadObjPltt, type ObjPltt } from "./pltt.ts";
 import { type MainSpriteGfx, parseMainSprite, poseToObjs } from "./sprite_main.ts";
 import { type Rendered, renderObjs } from "./render.ts";
 import { SPRITE_NAMES } from "./sprite_names.ts";
+import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 
 const GAME_IDS = ["U32J_rev1"] as const;
 type gameid = typeof GAME_IDS[number];
@@ -28,15 +29,38 @@ const hex4 = (n: number) => `0x${n.toString(16).toUpperCase().padStart(4, "0")}`
 const App = () => {
   const [rom, setRom] = useState<ROMFile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
 
   const open = async (file: File) => {
     try {
-      setRom(LoadROM(file.name, await file.arrayBuffer()));
+      const data = await file.arrayBuffer();
+      setRom(LoadROM(file.name, data));
+      setError(null);
+      // 保存できなくても (プライベートブラウズなど) 表示はできるので警告だけ出す
+      saveROM({ name: file.name, data }).then(() => setSavedName(file.name)).catch((e) => console.warn("Failed to save ROM:", e));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const openSaved = async () => {
+    try {
+      const stored = await loadROM();
+      if (!stored) throw new Error("Saved ROM not found");
+      setRom(LoadROM(stored.name, stored.data));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
+
+  const forget = () => {
+    clearROM().then(() => setSavedName(null)).catch((e) => console.warn("Failed to clear ROM:", e));
+  };
+
+  useEffect(() => {
+    savedROMName().then((name) => setSavedName(name ?? null)).catch((e) => console.warn("Failed to read saved ROM:", e));
+  }, []);
 
   // ウィンドウ全体でドラッグ&ドロップを受け付ける
   useEffect(() => {
@@ -58,6 +82,11 @@ const App = () => {
     <div>
       <h1>bokmagic-web</h1>
       <ROMUpload open={open} />
+      {savedName && (
+        <p>
+          saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>
+        </p>
+      )}
       {error && <p class="error">{error}</p>}
       {rom && <p>{rom.name} ({rom.id})</p>}
       {rom && <MainSpriteViewer rom={rom} />}
