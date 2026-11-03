@@ -9,10 +9,11 @@ import { collisionLoads } from "./analysis.ts";
 import { scriptHref } from "./view_script.tsx";
 import { tilemapHref } from "./view_tilemap.tsx";
 import { COLLISION_NAMES } from "./names.ts";
+import { decomp } from "./decomp.ts";
 import { hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
 
 const collisionLabel = (id: number, withDesc = true) => {
-  const name = COLLISION_NAMES[id];
+  const name = decomp(COLLISION_NAMES)[id];
   if (!name) return hex4(id);
   return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };

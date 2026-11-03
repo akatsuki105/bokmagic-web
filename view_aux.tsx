@@ -9,6 +9,7 @@ import { ANIM_PLAY_REVERSE, ANIM_PLAY_XFLIP, ANIM_PLAY_YFLIP, type AuxAnimFile, 
 import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./aux_anims.ts";
 import { ANIM_NAMES } from "./names.ts";
+import { decomp } from "./decomp.ts";
 import { flagNames, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop } from "./components.tsx";
 
 export const AuxSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
@@ -74,7 +75,7 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
         </p>
       )}
       <AuxAnimPanel
-        refs={AUX_ANIM_REFS[gfx.id] ?? []}
+        refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
         poseCount={gfx.poseCount}
         poseLimit={gfx.poses.length}
         animFiles={animFiles}
@@ -103,7 +104,7 @@ const ANIM_PLAY_FLAG_NAMES: [number, string][] = [
 
 // poseCount: スプライト自身のポーズ数, poseLimit: 添字で引けるポーズ数 (AuxSprite は後ろのエントリのポーズも引ける)
 const animFileLabel = (f: AuxAnimFile, poseCount: number, poseLimit: number) => {
-  const name = ANIM_NAMES[f.id]?.[0] ?? hex4(f.id);
+  const name = decomp(ANIM_NAMES)[f.id]?.[0] ?? hex4(f.id);
   // ポーズ番号がこのエントリに収まるか, 後ろのエントリまで使うか, ポーズ配列からはみ出すか
   const fit = f.maxPose < poseCount ? "" : f.maxPose < poseLimit ? " +" : " !";
   return `${name}${name.endsWith(hex4(f.id).slice(2)) ? "" : ` (${hex4(f.id)})`}, max pose ${f.maxPose}${fit}`;

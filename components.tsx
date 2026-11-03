@@ -5,6 +5,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
 import { BGP_NAMES, SPRITE_NAMES } from "./names.ts";
+import { decomp } from "./decomp.ts";
 import type { BgPlttFile } from "./bgpltt.ts";
 import { GRAYSCALE_PLTT } from "./render.ts";
 
@@ -12,14 +13,14 @@ export const hex4 = (n: number) => `0x${n.toString(16).toUpperCase().padStart(4,
 
 // withDesc が false なら定数名まで
 export const spriteLabel = (id: number, withDesc = true) => {
-  const name = SPRITE_NAMES[id];
+  const name = decomp(SPRITE_NAMES)[id];
   if (!name) return hex4(id);
   return withDesc ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };
 
 // BG パレットのファイル, withDesc が false なら定数名まで
 export const bgpLabel = (id: number, withDesc = true) => {
-  const name = BGP_NAMES[id];
+  const name = decomp(BGP_NAMES)[id];
   if (!name) return hex4(id);
   return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };

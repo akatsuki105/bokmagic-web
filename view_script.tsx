@@ -8,13 +8,22 @@ import { decodeScript, type ScriptEntry } from "./script.ts";
 import { scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
 import { SCRIPT_NAMES, STRING_NAMES } from "./names.ts";
+import { decomp, hasDecompTables } from "./decomp.ts";
 import { hashID, hex4, useHashID } from "./components.tsx";
 
-const PRINT_CONTEXT: PrintContext = {
-  scriptNames: new Map(Object.entries(SCRIPT_NAMES).map(([id, [name]]) => [Number(id), name])),
-  stringNames: new Map(Object.entries(STRING_NAMES).map(([id, [name]]) => [Number(id), name])),
+// 名前表は U32J rev1 のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
+const printContext = (): PrintContext => ({
+  scriptNames: new Map(Object.entries(decomp(SCRIPT_NAMES)).map(([id, [name]]) => [Number(id), name])),
+  stringNames: new Map(Object.entries(decomp(STRING_NAMES)).map(([id, [name]]) => [Number(id), name])),
+});
+const scriptIdByName = () => new Map(Object.entries(decomp(SCRIPT_NAMES)).map(([id, [name]]) => [name, Number(id)]));
+
+// 開いている作品が変わったときだけ作り直す
+let cached: { enabled: boolean; ctx: PrintContext; idByName: Map<string, number> } | undefined;
+const names = () => {
+  if (cached?.enabled !== hasDecompTables()) cached = { enabled: hasDecompTables(), ctx: printContext(), idByName: scriptIdByName() };
+  return cached;
 };
-const SCRIPT_ID_BY_NAME = new Map(Object.entries(SCRIPT_NAMES).map(([id, [name]]) => [name, Number(id)]));
 
 export const scriptHref = (id: number) => `#script/${hex4(id)}`;
 
@@ -27,7 +36,7 @@ export const ScriptViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const list = useMemo(() => {
     const f = filter.trim().toLowerCase();
     if (!f) return dir.scripts;
-    return dir.scripts.filter((s) => scriptName(s.id, PRINT_CONTEXT).toLowerCase().includes(f) || hex4(s.id).toLowerCase().includes(f));
+    return dir.scripts.filter((s) => scriptName(s.id, names().ctx).toLowerCase().includes(f) || hex4(s.id).toLowerCase().includes(f));
   }, [dir, filter]);
 
   const script = dir.scripts[selected - 1];
@@ -39,7 +48,7 @@ export const ScriptViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         <ul class="sprite-list">
           {list.map((s) => (
             <li key={s.id} class={s.id === selected ? "selected" : ""}>
-              <a href={scriptHref(s.id)}>{scriptName(s.id, PRINT_CONTEXT)}</a>
+              <a href={scriptHref(s.id)}>{scriptName(s.id, names().ctx)}</a>
             </li>
           ))}
         </ul>
@@ -55,17 +64,17 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
   const aliases = dir.scripts.filter((s) => s.offset === script.offset && s.id !== script.id);
   const text = useMemo(() => {
     try {
-      return decodeScript(rom.data, script).map((i, k) => (k === 0 ? `${scriptName(script.id, PRINT_CONTEXT)}() ` : "") + i.toString(PRINT_CONTEXT)).join("\n");
+      return decodeScript(rom.data, script).map((i, k) => (k === 0 ? `${scriptName(script.id, names().ctx)}() ` : "") + i.toString(names().ctx)).join("\n");
     } catch (e) {
       return `// decode error: ${e instanceof Error ? e.message : String(e)}`;
     }
   }, [rom, script]);
-  const desc = SCRIPT_NAMES[script.id]?.[1];
+  const desc = decomp(SCRIPT_NAMES)[script.id]?.[1];
 
   return (
     <div class="sprite-view">
       <h2>
-        {scriptName(script.id, PRINT_CONTEXT)} {desc}
+        {scriptName(script.id, names().ctx)} {desc}
       </h2>
       <p>
         ID: {hex4(script.id)}, ROM: 0x{(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}, variables: {script.varCount}
@@ -90,7 +99,7 @@ const ScriptLinks: FunctionComponent<{ ids: number[] }> = ({ ids }) => (
     {ids.map((id, k) => (
       <span key={id}>
         {k > 0 && ", "}
-        <a href={scriptHref(id)}>{scriptName(id, PRINT_CONTEXT)}</a>
+        <a href={scriptHref(id)}>{scriptName(id, names().ctx)}</a>
       </span>
     ))}
   </>
@@ -102,7 +111,7 @@ const LinkedText: FunctionComponent<{ text: string }> = ({ text }) => {
   let last = 0;
   for (const m of text.matchAll(/\bScript_\w+/g)) {
     const name = m[0];
-    const id = /^Script_0x[0-9A-F]{4}$/.test(name) ? parseInt(name.slice(9), 16) : SCRIPT_ID_BY_NAME.get(name);
+    const id = /^Script_0x[0-9A-F]{4}$/.test(name) ? parseInt(name.slice(9), 16) : names().idByName.get(name);
     if (id === undefined) continue;
     parts.push(text.slice(last, m.index), <a href={scriptHref(id)}>{name}</a>);
     last = m.index! + name.length;

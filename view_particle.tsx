@@ -9,15 +9,16 @@ import { type AuxAnimFile, parseAuxAnimFiles } from "./anim_aux.ts";
 import { OBJ_SIZE, renderObjs } from "./render.ts";
 import { AuxAnimPanel } from "./view_aux.tsx";
 import { PARTICLE_ANIM_REFS, PARTICLE_GROUP_NAMES, PARTICLE_PLTT_REFS, PARTICLE_POSE_NAMES } from "./particle_refs.ts";
+import { decomp } from "./decomp.ts";
 import { hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas } from "./components.tsx";
 
 const groupLabel = (id: number, withDesc = true) => {
-  const name = PARTICLE_GROUP_NAMES[id];
+  const name = decomp(PARTICLE_GROUP_NAMES)[id];
   if (!name) return hex4(id);
   return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };
 
-const poseName = (g: ParticleGroup, i: number) => PARTICLE_POSE_NAMES[g.id]?.[i];
+const poseName = (g: ParticleGroup, i: number) => decomp(PARTICLE_POSE_NAMES)[g.id]?.[i];
 
 export const ParticleViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => parseParticleFiles(rom.data, rom.fs), [rom]);
@@ -43,7 +44,7 @@ export const ParticleViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => 
 };
 
 const ParticleView: FunctionComponent<{ file: ParticleFile; group: ParticleGroup; pltt: ObjPltt; animFiles: AuxAnimFile[] }> = ({ file, group, pltt, animFiles }) => {
-  const plttRefs = PARTICLE_PLTT_REFS[group.id] ?? [];
+  const plttRefs = decomp(PARTICLE_PLTT_REFS)[group.id] ?? [];
   const [poseIdx, setPoseIdx] = useState(0);
   const [plttID, setPlttID] = useState(group.plttID);
   const [scale, setScale] = useState(4);
@@ -93,7 +94,7 @@ const ParticleView: FunctionComponent<{ file: ParticleFile; group: ParticleGroup
         {poseIdx >= group.poseCount && " (後ろのグループのタイル)"}
       </p>
       <AuxAnimPanel
-        refs={PARTICLE_ANIM_REFS[group.id] ?? []}
+        refs={decomp(PARTICLE_ANIM_REFS)[group.id] ?? []}
         poseCount={group.poseCount}
         poseLimit={group.poseLimit}
         particle

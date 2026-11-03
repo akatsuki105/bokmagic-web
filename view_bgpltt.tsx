@@ -5,6 +5,7 @@ import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { BGPLTT_REFS } from "./bgpltt_refs.ts";
+import { decomp } from "./decomp.ts";
 import { bgpLabel, ColorTable, NumberStepper, Swatches } from "./components.tsx";
 
 export const BgPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
@@ -15,7 +16,7 @@ export const BgPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =>
     <div class="viewer">
       <ul class="sprite-list">
         {files.map((f) => (
-          <li key={f.id} class={f === selected ? "selected" : ""} onClick={() => setSelected(f)} title={BGPLTT_REFS[f.id]}>
+          <li key={f.id} class={f === selected ? "selected" : ""} onClick={() => setSelected(f)} title={decomp(BGPLTT_REFS)[f.id]}>
             {bgpLabel(f.id, false)}
           </li>
         ))}
@@ -27,7 +28,7 @@ export const BgPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =>
 
 const BgPaletteView: FunctionComponent<{ file: BgPlttFile }> = ({ file }) => {
   const [row, setRow] = useState(0);
-  const refs = BGPLTT_REFS[file.id];
+  const refs = decomp(BGPLTT_REFS)[file.id];
 
   return (
     <div class="sprite-view">

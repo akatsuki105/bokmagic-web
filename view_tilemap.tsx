@@ -13,12 +13,13 @@ import { type MapLoads, mapLoadsByTilemap } from "./analysis.ts";
 import type { LoadCall } from "./script_scan.ts";
 import { scriptHref } from "./view_script.tsx";
 import { TILEMAP_NAMES } from "./names.ts";
+import { decomp } from "./decomp.ts";
 import { bgpLabel, type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 
 export const tilemapHref = (id: number) => `#tilemap/${hex4(id)}`;
 
 const tilemapLabel = (id: number, withDesc = true) => {
-  const name = TILEMAP_NAMES[id];
+  const name = decomp(TILEMAP_NAMES)[id];
   if (!name) return hex4(id);
   return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };

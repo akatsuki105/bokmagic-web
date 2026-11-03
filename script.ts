@@ -5,8 +5,8 @@ import { FileSystem } from "./fs.ts";
 import { ByteStream, InstructionReader } from "./bokcc/instruction_reader.ts";
 import type { Instruction } from "./bokcc/instruction.ts";
 
-// gFS で gScriptDirectory を指すエントリ (src/file.c)
-const SCRIPT_DIRECTORY = (0xA8D9 << 16) | 0xA41E;
+// gFS で gScriptDirectory を指すエントリの上位16ビット (src/file.c の DIR_SCRIPT)
+const SCRIPT_DIRECTORY = 0xA8D9;
 
 export type ScriptEntry = {
   id: number; // スクリプトID (script_entries の添字 + 1)

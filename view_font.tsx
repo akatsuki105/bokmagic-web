@@ -6,6 +6,7 @@ import type { ROMFile } from "./rom.ts";
 import { type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "./font.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./charmap.ts";
+import { decomp } from "./decomp.ts";
 import { bgpLabel, hex4, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
 
 // Font_SetPltt が 14・15 本目を差し替えるのに使う BG パレット (0: BGP_529C, 1: BGP_539C)
@@ -34,7 +35,7 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const rendered = useMemo(() => renderGlyphs(font, kind, cols, colors, style), [font, kind, cols, colors, style]);
   const [gw, gh] = glyphSize(kind);
   const count = kind === "hankaku" ? font.hankakuCount : font.zenkakuCount;
-  const chars = kind === "hankaku" ? HANKAKU_CHARS : ZENKAKU_CHARS;
+  const chars = decomp(kind === "hankaku" ? HANKAKU_CHARS : ZENKAKU_CHARS);
 
   return (
     <div class="viewer">

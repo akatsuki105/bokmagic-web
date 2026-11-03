@@ -40,6 +40,7 @@ const BINARY: Record<number, (a: number, b: number) => number> = {
   21: (a, b) => Number(a && b),
 };
 const MAX_DEPTH = 16; // スクリプト呼び出しを展開する深さの上限
+const ROOT_LEVELS = 3; // 読み込み呼び出しを含むスクリプトから、起点として遡る呼び出し元の段数
 
 export type LoadCall = {
   root: number; // 展開を始めたスクリプトID
@@ -216,14 +217,25 @@ export class ScriptScanner {
     return this.calls;
   }
 
-  // 展開の起点にするスクリプト: タイルマップを読む呼び出しを直接含むもの + LoadMap の行き先
+  // 展開の起点にするスクリプト
+  // - 読み込み呼び出しを直接含むもの
+  // - そこから定数で呼んでいる呼び出し元を ROOT_LEVELS 段まで遡ったもの (U33J は ID を引数で2-3段受け渡してから読み込む)
+  // - LoadMap の行き先
   roots(): number[] {
     const roots = new Set<number>();
+    const direct = new Set<number>();
+    const callers = new Map<number, Set<number>>();
     const seen = new Set<number>();
     const visit = (id: number, i: Instruction) => {
+      if (i.insnType === InsnType.Call) {
+        const set = callers.get(i.value) ?? new Set<number>();
+        callers.set(i.value, set);
+        set.add(id);
+      }
       if (i.insnType === InsnType.Control) {
         const head = i.children[0]?.insnType === InsnType.Constant ? i.children[0].value & 0xFFFFFF : null;
-        if (i.value === ControlType.SubroutineCall && head === SUB_LOAD_TILEMAP) roots.add(id);
+        if (i.value === ControlType.SubroutineCall && (head === SUB_LOAD_TILEMAP || head === SUB_LOAD_TILESET || head === SUB_LOAD_COLLISION)) direct.add(id);
+        if (i.value === ControlType.EntityCreate && head === SUB_MAP_PLTT) direct.add(id);
         if (i.value === ControlType.LoadMap && head !== null) roots.add(head);
       }
       for (const c of i.children) visit(id, c);
@@ -232,6 +244,14 @@ export class ScriptScanner {
       if (seen.has(s.offset)) continue;
       seen.add(s.offset);
       for (const t of this.tree(s.id) ?? []) visit(s.id, t);
+    }
+    let frontier = direct;
+    for (const id of direct) roots.add(id);
+    for (let level = 0; level < ROOT_LEVELS; level++) {
+      const next = new Set<number>();
+      for (const id of frontier) for (const c of callers.get(id) ?? []) if (!roots.has(c)) next.add(c);
+      for (const id of next) roots.add(id);
+      frontier = next;
     }
     return [...roots].sort((a, b) => a - b);
   }

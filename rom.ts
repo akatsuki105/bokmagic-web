@@ -1,8 +1,9 @@
 import * as gba from "./gba.ts";
 import { FileSystem } from "./fs.ts";
 import { loadObjPltt, type ObjPltt } from "./objpltt.ts";
+import { setDecompGame } from "./decomp.ts";
 
-const GAME_IDS = ["U32J_rev1"] as const;
+const GAME_IDS = ["U32J_rev1", "U33J"] as const;
 type gameid = typeof GAME_IDS[number];
 
 // check function to ensure gameID satisfies the type gameid
@@ -25,6 +26,7 @@ export const LoadROM = (filename: string, data: ArrayBuffer): ROMFile => {
     throw new Error(`Unsupported gameID: ${gameID} (supported: ${GAME_IDS.join(", ")})`);
   }
   const fs = new FileSystem(dv, gameID);
+  setDecompGame(gameID);
   return {
     name: filename,
     id: gameID,
