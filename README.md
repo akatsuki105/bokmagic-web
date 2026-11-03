@@ -16,9 +16,9 @@ $ deno task dev
 
 ## Generated tables
 
-`sprite_names.ts` (スプライトとアニメファイルの定数名) と `aux_anims.ts` (AuxSprite とアニメファイルの組) は boktai2 decomp のヘッダとソースから生成する
+`names.ts` (スプライト、アニメファイル、BG パレットの定数名)、`aux_anims.ts` (AuxSprite とアニメファイルの組)、`bgpltt_refs.ts` (BG パレットが読まれている場所) は boktai2 decomp のヘッダとソースから生成する
 
 ```sh
 $ deno run --allow-read --allow-write tools/gen_tables.ts <path/to/boktai2>
-$ deno fmt sprite_names.ts aux_anims.ts
+$ deno fmt names.ts aux_anims.ts bgpltt_refs.ts
 ```

@@ -2,6 +2,7 @@
 
 // GetFile に渡すディレクトリID (include/file.h)
 export const DIR_OBJPLTT = 0x9B1B;
+export const DIR_BGPLTT = 0x92B3;
 export const DIR_ANIMATION = 0x922E;
 export const DIR_AUX_SPRITE = 0x98F5;
 export const DIR_MAIN_SPRITE = 0xCB05;
@@ -10,6 +11,7 @@ export const DIR_MAIN_SPRITE = 0xCB05;
 const DIR_REMAP: Record<number, [number, number]> = {
   [DIR_ANIMATION]: [0x9225, 0x5130],
   [DIR_OBJPLTT]: [0x9A65, 0x4679],
+  [DIR_BGPLTT]: [0x9305, 0xD710],
   [DIR_AUX_SPRITE]: [0x9B05, 0x2117],
   [DIR_MAIN_SPRITE]: [0xC8E5, 0x5F29],
 };

@@ -5,12 +5,14 @@ import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
 import { ObjPaletteViewer } from "./view_objpltt.tsx";
+import { BgPaletteViewer } from "./view_bgpltt.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
   ["main", "MainSprite"],
   ["aux", "AuxSprite"],
   ["objpltt", "OBJ Palette"],
+  ["bgpltt", "BG Palette"],
 ] as const;
 type Tab = typeof TABS[number][0];
 
@@ -94,6 +96,7 @@ const App = () => {
           {tab === "main" && <MainSpriteViewer rom={rom} />}
           {tab === "aux" && <AuxSpriteViewer rom={rom} />}
           {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
+          {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
         </div>
       )}
     </div>

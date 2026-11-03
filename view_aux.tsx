@@ -8,7 +8,7 @@ import { auxPoseToObjs, type AuxSpriteGfx, parseAuxSprites } from "./sprite_aux.
 import { ANIM_PLAY_REVERSE, ANIM_PLAY_XFLIP, ANIM_PLAY_YFLIP, type AuxAnimFile, AuxAnimState, cmdDuration, cmdFlip, cmdPose, parseAuxAnimFiles } from "./anim_aux.ts";
 import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./aux_anims.ts";
-import { ANIM_NAMES } from "./sprite_names.ts";
+import { ANIM_NAMES } from "./names.ts";
 import { flagNames, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop } from "./components.tsx";
 
 export const AuxSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {

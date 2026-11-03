@@ -155,6 +155,21 @@
         padding: 1px 8px;
         text-align: left;
       }
+      .bgpltt-grid {
+        width: fit-content;
+        margin: 0.5em 0;
+      }
+      .bgpltt-grid .pltt-row {
+        cursor: pointer;
+        border-left: 3px solid transparent;
+      }
+      .bgpltt-grid .pltt-row.selected {
+        background: light-dark(#cfd8ff, #3a4470);
+        border-left-color: #4a6cff;
+      }
+      .mono {
+        font-family: monospace;
+      }
       .pltt-users {
         font-family: monospace;
       }

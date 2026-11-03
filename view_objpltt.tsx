@@ -7,10 +7,7 @@ import type { ObjPltt } from "./objpltt.ts";
 import type { ROMFile } from "./rom.ts";
 import { parseMainSprite } from "./sprite_main.ts";
 import { parseAuxSprites } from "./sprite_aux.ts";
-import { hex4, NumberStepper, spriteLabel } from "./components.tsx";
-
-const cssColor = (c: number) => `rgb(${c & 0xFF} ${(c >> 8) & 0xFF} ${(c >> 16) & 0xFF})`;
-const hexRGB = (c: number) => "#" + [c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF].map((v) => v.toString(16).toUpperCase().padStart(2, "0")).join("");
+import { ColorTable, hex4, NumberStepper, spriteLabel, Swatches } from "./components.tsx";
 
 // plttID -> そのパレットを既定で使うスプライト
 // MainSprite: MainSpriteGfx.palStart + MainSubsprite.paletteNum, AuxSprite: Video_GetAuxSprite が当てる plttID (最初のポーズのもの)
@@ -43,7 +40,7 @@ export const ObjPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =
         {Array.from({ length: pltt.length }, (_, id) => (
           <li key={id} class={id === selected ? "selected" : ""} onClick={() => setSelected(id)} title={users.get(id)?.join("\n")}>
             <span class={users.has(id) ? "pltt-id used" : "pltt-id"}>{id}</span>
-            {Array.from({ length: 16 }, (_, i) => <span key={i} class="swatch" style={{ background: cssColor(pltt.colors[id * 16 + i]) }} />)}
+            <Swatches colors={pltt.colors} start={id * 16} />
           </li>
         ))}
       </ul>
@@ -61,40 +58,7 @@ const PaletteDetail: FunctionComponent<{ pltt: ObjPltt; plttID: number; users: s
     <div class="controls">
       <NumberStepper label="plttID" value={plttID} min={0} max={pltt.length - 1} onChange={onChange} />
     </div>
-    <table class="pltt-table">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th></th>
-          <th>rgb555</th>
-          <th>rgb888</th>
-          <th>r, g, b (5bit)</th>
-        </tr>
-      </thead>
-      <tbody>
-        {Array.from({ length: 16 }, (_, i) => {
-          const raw = pltt.raw[plttID * 16 + i];
-          const c = pltt.colors[plttID * 16 + i];
-          return (
-            <tr key={i}>
-              <td>{i}</td>
-              <td>
-                <span class="swatch large" style={{ background: cssColor(c) }} />
-              </td>
-              <td>
-                {hex4(raw)}
-                {raw & 0x8000 ? " (bit15)" : ""}
-              </td>
-              <td>{hexRGB(c)}</td>
-              <td>
-                {raw & 0x1F}, {(raw >> 5) & 0x1F}, {(raw >> 10) & 0x1F}
-                {i === 0 && " (OBJ では透明)"}
-              </td>
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+    <ColorTable raw={pltt.raw} colors={pltt.colors} start={plttID * 16} note0="OBJ では透明" />
     <h3>used by</h3>
     {users.length > 0 ? <ul class="pltt-users">{users.map((u) => <li key={u}>{u}</li>)}</ul> : <p>スプライトの既定のパレットとしては使われていません (ゲーム中で plttID を指定して使うものはここに出ません)</p>}
   </div>

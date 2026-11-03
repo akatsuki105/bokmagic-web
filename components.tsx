@@ -4,7 +4,7 @@ import { FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
-import { SPRITE_NAMES } from "./sprite_names.ts";
+import { SPRITE_NAMES } from "./names.ts";
 
 export const hex4 = (n: number) => `0x${n.toString(16).toUpperCase().padStart(4, "0")}`;
 
@@ -67,15 +67,61 @@ export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number
   );
 };
 
-export const PaletteRow: FunctionComponent<{ pltt: ObjPltt; plttID: number }> = ({ pltt, plttID }) => {
-  const colors = [...pltt.colors.subarray(plttID * 16, plttID * 16 + 16)];
-  return (
-    <div class="pltt-row">
-      <span>{plttID}</span>
-      {colors.map((c, i) => <span key={i} class="swatch" style={{ background: `rgb(${c & 0xFF} ${(c >> 8) & 0xFF} ${(c >> 16) & 0xFF})` }} />)}
-    </div>
-  );
-};
+export const cssColor = (c: number) => `rgb(${c & 0xFF} ${(c >> 8) & 0xFF} ${(c >> 16) & 0xFF})`;
+const hexRGB = (c: number) => "#" + [c & 0xFF, (c >> 8) & 0xFF, (c >> 16) & 0xFF].map((v) => v.toString(16).toUpperCase().padStart(2, "0")).join("");
+
+// 16色を色見本で横に並べる, colors は RGBA8888 で start から16色
+export const Swatches: FunctionComponent<{ colors: Uint32Array; start: number }> = ({ colors, start }) => (
+  <>
+    {Array.from({ length: 16 }, (_, i) => <span key={i} class="swatch" style={{ background: cssColor(colors[start + i]) }} />)}
+  </>
+);
+
+export const PaletteRow: FunctionComponent<{ pltt: ObjPltt; plttID: number }> = ({ pltt, plttID }) => (
+  <div class="pltt-row">
+    <span>{plttID}</span>
+    <Swatches colors={pltt.colors} start={plttID * 16} />
+  </div>
+);
+
+// 16色の値の表, raw は rgb555, colors は raw を RGBA8888 にしたもので、どちらも start から16色
+// note0 は色0 に添える注記 (OBJ と BG で色0 の扱いが違うので)
+export const ColorTable: FunctionComponent<{ raw: Uint16Array; colors: Uint32Array; start: number; note0?: string }> = ({ raw, colors, start, note0 }) => (
+  <table class="pltt-table">
+    <thead>
+      <tr>
+        <th>#</th>
+        <th></th>
+        <th>rgb555</th>
+        <th>rgb888</th>
+        <th>r, g, b (5bit)</th>
+      </tr>
+    </thead>
+    <tbody>
+      {Array.from({ length: 16 }, (_, i) => {
+        const v = raw[start + i];
+        const c = colors[start + i];
+        return (
+          <tr key={i}>
+            <td>{i}</td>
+            <td>
+              <span class="swatch large" style={{ background: cssColor(c) }} />
+            </td>
+            <td>
+              {hex4(v)}
+              {v & 0x8000 ? " (bit15)" : ""}
+            </td>
+            <td>{hexRGB(c)}</td>
+            <td>
+              {v & 0x1F}, {(v >> 5) & 0x1F}, {(v >> 10) & 0x1F}
+              {i === 0 && note0 && ` (${note0})`}
+            </td>
+          </tr>
+        );
+      })}
+    </tbody>
+  </table>
+);
 
 // 数値の入力欄と、1ずつ前後させるボタン
 export const NumberStepper: FunctionComponent<{ label: string; value: number; min: number; max: number; onChange: (v: number) => void }> = ({ label, value, min, max, onChange }) => {
