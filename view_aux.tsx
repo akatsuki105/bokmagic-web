@@ -10,19 +10,26 @@ import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
 import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { flagNames, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop } from "./components.tsx";
+import { flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+
+export const auxSpriteHref = (id: number) => `#aux/${hex4(id)}`;
 
 export const AuxSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const sprites = useMemo(() => parseAuxSprites(rom.data, rom.fs), [rom]);
   const animFiles = useMemo(() => parseAuxAnimFiles(rom.data, rom.fs), [rom]);
-  const [selected, setSelected] = useState<AuxSpriteGfx>(sprites[0]);
+  const byID = (id: number | undefined) => sprites.find((g) => g.id === id);
+  const [selected, setSelected] = useState<AuxSpriteGfx>(byID(hashID("aux")) ?? sprites[0]);
+  useHashID("aux", (id) => {
+    const g = byID(id);
+    if (g) setSelected(g);
+  });
 
   return (
     <div class="viewer">
       <ul class="sprite-list">
         {sprites.map((g) => (
-          <li key={g.id} class={g === selected ? "selected" : ""} onClick={() => setSelected(g)}>
-            {spriteLabel(g.id, false)}
+          <li key={g.id} class={g === selected ? "selected" : ""}>
+            <a href={auxSpriteHref(g.id)}>{spriteLabel(g.id, false)}</a>
           </li>
         ))}
       </ul>

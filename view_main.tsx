@@ -8,19 +8,26 @@ import type { ROMFile } from "./rom.ts";
 import { type MainSpriteGfx, parseMainSprite, poseToObjs } from "./sprite_main.ts";
 import { renderObjs } from "./render.ts";
 import { MAIN_ANIM_EVENT_ADVANCED, MAIN_ANIM_EVENT_ENDED, MAIN_ANIM_EVENT_WILL_END, MAIN_ANIM_FORCE_POSE, MAIN_ANIM_KEEP_FRAME, MAIN_ANIM_REVERSE, MainSpriteAnimState, PLAYMODE_LOOP, PLAYMODE_ONCE_AND_STOP, PLAYMODE_PAUSE, PLAYMODE_PLAY_ONCE_HIDE } from "./anim_main.ts";
-import { flagNames, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop } from "./components.tsx";
+import { flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+
+export const mainSpriteHref = (id: number) => `#main/${hex4(id)}`;
 
 export const MainSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => rom.fs.list(DIR_MAIN_SPRITE), [rom]);
-  const [selected, setSelected] = useState<FileEntry>(files[0]);
+  const byID = (id: number | undefined) => files.find((f) => f.id === id);
+  const [selected, setSelected] = useState<FileEntry>(byID(hashID("main")) ?? files[0]);
+  useHashID("main", (id) => {
+    const f = byID(id);
+    if (f) setSelected(f);
+  });
   const gfx = useMemo(() => parseMainSprite(rom.data, selected.offset), [rom, selected]);
 
   return (
     <div class="viewer">
       <ul class="sprite-list">
         {files.map((f) => (
-          <li key={f.id} class={f === selected ? "selected" : ""} onClick={() => setSelected(f)}>
-            {spriteLabel(f.id, false)}
+          <li key={f.id} class={f === selected ? "selected" : ""}>
+            <a href={mainSpriteHref(f.id)}>{spriteLabel(f.id, false)}</a>
           </li>
         ))}
       </ul>
