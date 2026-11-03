@@ -14,10 +14,11 @@ http://localhost:8080/
 $ deno task dev
 ```
 
-## Sprite names
+## Generated tables
 
-`sprite_names.ts` は boktai2 decomp の `include/constants/sprite.h` から生成する
+`sprite_names.ts` (スプライトとアニメファイルの定数名) と `aux_anims.ts` (AuxSprite とアニメファイルの組) は boktai2 decomp のヘッダとソースから生成する
 
 ```sh
-$ deno run --allow-read --allow-write tools/gen_sprite_names.ts <path/to/boktai2>
+$ deno run --allow-read --allow-write tools/gen_tables.ts <path/to/boktai2>
+$ deno fmt sprite_names.ts aux_anims.ts
 ```

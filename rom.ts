@@ -1,0 +1,35 @@
+import * as gba from "./gba.ts";
+import { FileSystem } from "./fs.ts";
+import { loadObjPltt, type ObjPltt } from "./pltt.ts";
+
+const GAME_IDS = ["U32J_rev1"] as const;
+type gameid = typeof GAME_IDS[number];
+
+// check function to ensure gameID satisfies the type gameid
+const isSupportedGameID = (id: string): id is gameid => {
+  return GAME_IDS.includes(id as typeof GAME_IDS[number]);
+};
+
+export type ROMFile = {
+  name: string; // filename
+  id: gameid;
+  data: DataView; // file data
+  fs: FileSystem;
+  pltt: ObjPltt;
+};
+
+export const LoadROM = (filename: string, data: ArrayBuffer): ROMFile => {
+  const dv = new DataView(data);
+  const gameID = gba.getGameID(dv);
+  if (!isSupportedGameID(gameID)) {
+    throw new Error(`Unsupported gameID: ${gameID} (supported: ${GAME_IDS.join(", ")})`);
+  }
+  const fs = new FileSystem(dv, gameID);
+  return {
+    name: filename,
+    id: gameID,
+    data: dv,
+    fs,
+    pltt: loadObjPltt(dv, fs),
+  };
+};
