@@ -1114,6 +1114,35 @@ export const SCRIPT_NAMES: Record<number, [name: string, desc: string]> = {
   0x0F69: ["Script_ArenaRankSelect", "闘技場のランク選択"],
 };
 
+// StageID (gStat->stageID) -> [定数名, 説明] (include/constants/map.h in boktai2 decomp)
+export const STAGE_NAMES: Record<number, [name: string, desc: string]> = {
+  0x0000: ["ST_TANI", "渓谷・街門"],
+  0x0001: ["ST_CATHEDRAL", "大聖堂"],
+  0x0002: ["ST_ISEKI", "遺跡"],
+  0x0003: ["ST_DARKCITY", "暗黒街"],
+  0x0004: ["ST_AQUEDUCT", "地下水路"],
+  0x0005: ["ST_RASEN", "螺旋の塔"],
+  0x0006: ["ST_HEN", "変異域"],
+  0x0007: ["ST_HAIKYO", "廃墟"],
+  0x0008: ["ST_ARENA", "闘技場"],
+  0x0009: ["ST_FOREST", "森"],
+  0x000A: ["ST_BOTI", "地下墓地"],
+  0x000B: ["ST_TIMEHOUSE", "時の家"],
+  0x000C: ["ST_TREASURY", "宝物庫"],
+  0x000D: ["ST_MUGEN", "夢幻街"],
+  0x000E: ["ST_PD_BATTLE", "バトルドライブ"],
+  0x000F: ["ST_AVE6", '6番街 "f00"'],
+  0x0010: ["ST_AVE10", '10番街, "f01"'],
+  0x0011: ["ST_AVE4", '4番街, "f02"'],
+  0x0012: ["ST_AVE2", '2番街, "f03"'],
+  0x0013: ["ST_AVE8", '8番街, "f04"'],
+  0x0014: ["ST_AVE12", '12番街, "f05"'],
+  0x0015: ["ST_HILL", '約束の丘, "f06"'],
+  0x0016: ["ST_MALL", "サンミゲル"],
+  0x0017: ["ST_TREE", "太陽樹"],
+  0x0018: ["ST_PD_POINT", "パイルドライバー"],
+};
+
 // 曲番号 (gSongTable の添字) -> [定数名, 説明] (include/constants/songs.h in boktai2 decomp)
 export const SONG_NAMES: Record<number, [name: string, desc: string]> = {
   0x0000: ["SONG_NONE", "無音"],

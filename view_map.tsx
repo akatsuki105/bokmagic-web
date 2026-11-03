@@ -18,8 +18,17 @@ import { collisionHref, collisionTileText } from "./view_collision.tsx";
 import { tilemapHref, tilemapLabel } from "./view_tilemap.tsx";
 import { bgplttHref } from "./view_bgpltt.tsx";
 import { bgpLabel, type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { STAGE_NAMES } from "./generated/names.ts";
+import { decomp } from "./decomp.ts";
 
 export const mapHref = (root: number) => `#map/${hex4(root)}`;
+
+// ステージの短い名前 (include/constants/map.h のコメントの最初の部分, 名前が無ければ番号)
+const stageShort = (stage: number | null) => {
+  if (stage === null) return "";
+  const name = decomp(STAGE_NAMES)[stage];
+  return name ? name[1].split(/ \(|, /)[0] : `ST ${stage}`;
+};
 
 const tilemapID = (c: LoadCall) => c.args.d?.[0] ?? null;
 
@@ -51,13 +60,21 @@ export const MapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
       <ul class="sprite-list">
         {entries.map((e) => (
           <li key={e.root} class={e === selected ? "selected" : ""} title={e.scenes.map(sceneLabel).join("\n")}>
-            <a href={mapHref(e.root)}>{hex4(e.root)}</a>
+            <a href={mapHref(e.root)}>
+              {hex4(e.root)} {stageShort(e.stage)}
+            </a>
           </li>
         ))}
       </ul>
       {selected ? <MapView key={selected.root} rom={rom} entry={selected} ts={tilesets[0]} bgFiles={bgFiles} /> : <p>マップを読み込むスクリプトが見つかりません</p>}
     </div>
   );
+};
+
+// StageID と定数名・説明
+const StageText: FunctionComponent<{ stage: number }> = ({ stage }) => {
+  const name = decomp(STAGE_NAMES)[stage];
+  return <>{stage}{name && ` ${name[0]} ${name[1]}`}</>;
 };
 
 const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | undefined; bgFiles: BgPlttFile[] }> = ({ rom, entry, ts, bgFiles }) => {
@@ -70,8 +87,11 @@ const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | 
   return (
     <div class="sprite-view">
       <h2>
-        Map {hex4(entry.root)} <a href={scriptHref(entry.root)} class="script-loads">Script タブで開く</a>
+        Map {hex4(entry.root)} {stageShort(entry.stage)} <a href={scriptHref(entry.root)} class="script-loads">Script タブで開く</a>
       </h2>
+      <p>
+        ステージ: {entry.stage === null ? <span class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText stage={entry.stage} />}
+      </p>
       {entry.scenes.length > 1 && (
         <div class="controls">
           場面 (if/switch で読み込むものが変わる, または同じ BG に読み直している):

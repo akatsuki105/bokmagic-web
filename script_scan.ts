@@ -13,6 +13,7 @@ export const SUB_LOAD_TILEMAP = 0x7A27; // Cmd_LoadTileMap, .d タイルマッ�
 export const SUB_MAP_PLTT = 0x4AE5; // Entity4AE5_Create, EntityCreate で呼ばれる, .p BG パレットの列 (最大4)
 export const SUB_CREATE_BG = 0xB4B4; // Cmd_CreateBG, EntityCreate で呼ばれる, .i BG 番号, .p BG の優先度, .d タイルマップ
 export const SUB_LOAD_COLLISION = 0x30AD; // Map_LoadMapScripted, .p 当たり判定マップ
+export const SUB_SET_STAGE = 0x82B3; // Cmd_82B3, .s StageID (gStat->stageID)
 
 const OP_ASSIGN = 22; // "=" (bokcc/instruction.ts の OPERATORS)
 const CLAUSE_ELSE = 0x65; // 'e'
@@ -193,7 +194,7 @@ export class ScriptScanner {
         return;
       }
       case ControlType.SubroutineCall:
-        if (head === SUB_LOAD_TILESET || head === SUB_LOAD_TILEMAP || head === SUB_LOAD_COLLISION) this.record(script, head, i, env);
+        if (head === SUB_LOAD_TILESET || head === SUB_LOAD_TILEMAP || head === SUB_LOAD_COLLISION || head === SUB_SET_STAGE) this.record(script, head, i, env);
         return;
       case ControlType.EntityCreate:
         if (head === SUB_MAP_PLTT || head === SUB_CREATE_BG) this.record(script, head, i, env);

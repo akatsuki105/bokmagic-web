@@ -1,11 +1,13 @@
+#!/usr/bin/env -S deno run --allow-read --allow-write
+
 // boktai2 decomp のヘッダとソースから、ビューワが使う表を generated/ に作る
 // - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID, スクリプトID, 文字列ID の定数名
-//   タイルマップ・当たり判定マップのファイルID, 曲番号 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h, songs.h)
+//   タイルマップ・当たり判定マップのファイルID, StageID, 曲番号 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h, map.h, songs.h)
 // - aux_anims.ts: AuxSprite とアニメファイルの組 (ソース中で一緒に使われているもの)
 // - bgpltt_refs.ts: BG パレットがソース中で読まれている場所
 // - particle_refs.ts: パーティクルのグループと同じ関数で使われているアニメファイルと OBJ パレット, グループのポーズ名
 // - charmap.ts: フォントの字形番号 -> 文字 (charmap.txt)
-// e.g. deno run --allow-read --allow-write tools/gen_tables.ts ~/Dev/GBA/ret/boktai2/boktai2 && deno fmt generated/
+// e.g. ./tools/gen_tables.ts ~/Dev/GBA/ret/boktai2/boktai2 && deno fmt generated/
 
 // BOKHASH (tools/hash.ts in boktai2 decomp), ここで使うのは ASCII だけ
 const bokhash = (s: string): number => {
@@ -45,6 +47,7 @@ const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
 const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);
 const collisions = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/collision_map.h`), /^HP_/);
+const stages = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/map.h`), /^ST_/);
 const songs = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/songs.h`), /^(SONG|BGM|SE|ME|CRY|NOISE|VO|SOUND)_/);
 const strings = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/strings.h`), /^(STR|BIN)_/);
 
@@ -99,6 +102,11 @@ ${nameTable(collisions)}
 // スクリプトID -> [名前, 説明] (include/constants/script.h in boktai2 decomp)
 export const SCRIPT_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(scriptNames)}
+};
+
+// StageID (gStat->stageID) -> [定数名, 説明] (include/constants/map.h in boktai2 decomp)
+export const STAGE_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(stages)}
 };
 
 // 曲番号 (gSongTable の添字) -> [定数名, 説明] (include/constants/songs.h in boktai2 decomp)

@@ -36,6 +36,6 @@ $ deno task dev
 - `charmap.ts`: フォントの字形番号 -> 文字 (charmap.txt)
 
 ```sh
-$ deno run --allow-read --allow-write tools/gen_tables.ts <path/to/boktai2>
+$ ./tools/gen_tables.ts <path/to/boktai2>
 $ deno fmt generated/
 ```

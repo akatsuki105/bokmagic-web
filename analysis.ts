@@ -2,7 +2,7 @@
 
 import type { ROMFile } from "./rom.ts";
 import { decodeScript, parseScriptDirectory, type ScriptDirectory } from "./script.ts";
-import { type LoadCall, ScriptScanner, SUB_CREATE_BG, SUB_LOAD_COLLISION, SUB_LOAD_TILEMAP, SUB_LOAD_TILESET, SUB_MAP_PLTT } from "./script_scan.ts";
+import { type LoadCall, ScriptScanner, SUB_CREATE_BG, SUB_LOAD_COLLISION, SUB_LOAD_TILEMAP, SUB_LOAD_TILESET, SUB_MAP_PLTT, SUB_SET_STAGE } from "./script_scan.ts";
 import { InsnType, type Instruction } from "./bokcc/instruction.ts";
 import { layerBGs } from "./tilemap.ts";
 
@@ -47,6 +47,7 @@ export type MapLoads = {
   pltts: LoadCall[];
   bgs: LoadCall[]; // Cmd_CreateBG, BG の優先度を決める
   collisions: LoadCall[];
+  stages: LoadCall[]; // Cmd_82B3 (StageID を設定する)
 };
 
 export const mapLoads = (rom: ROMFile): MapLoads[] =>
@@ -62,6 +63,7 @@ export const mapLoads = (rom: ROMFile): MapLoads[] =>
         pltts: calls.filter((c) => c.sub === SUB_MAP_PLTT),
         bgs: calls.filter((c) => c.sub === SUB_CREATE_BG),
         collisions: calls.filter((c) => c.sub === SUB_LOAD_COLLISION),
+        stages: calls.filter((c) => c.sub === SUB_SET_STAGE),
       };
     }).filter((m) => m.tilemaps.length > 0);
   });
@@ -95,6 +97,7 @@ export type MapEntry = {
   loads: MapLoads;
   scenes: MapScene[];
   pltts: LoadCall[]; // BG パレット, 場面によらず root から届くもの全部 (同じものは1つ)
+  stage: number | null; // StageID (Cmd_82B3 の '.s'), root から届かなければ呼び出し元から探す
 };
 
 const tilemapID = (c: LoadCall) => c.args.d?.[0] ?? null;
@@ -216,6 +219,25 @@ const buildScenes = (m: MapLoads, owned: (c: LoadCall) => boolean): MapScene[] =
   return out;
 };
 
+const scanner = (rom: ROMFile) => memo(rom, "scanner", () => new ScriptScanner(rom.data, scriptDirectory(rom)));
+
+// id から届く Cmd_82B3 の値, if/switch の外のものを先にする
+const stagesFrom = (calls: LoadCall[]): number[] => {
+  const sorted = calls.filter((c) => c.sub === SUB_SET_STAGE).sort((a, b) => Number(a.conditional) - Number(b.conditional));
+  return [...new Set(sorted.map((c) => c.args.s?.[0]).filter((v): v is number => v !== null && v !== undefined))];
+};
+
+// マップの StageID: root から届く Cmd_82B3, 無ければ root を呼んでいるスクリプトから (部屋のスクリプトが Script_0x0072(stage) を呼んでから読み込みスクリプトを呼ぶ形がある)
+const mapStage = (rom: ROMFile, m: MapLoads): number | null => {
+  const own = stagesFrom(m.stages);
+  if (own.length > 0) return own[0];
+  for (const c of scriptCallers(rom).get(m.root) ?? []) {
+    const v = stagesFrom(scanner(rom).scan(c));
+    if (v.length > 0) return v[0];
+  }
+  return null;
+};
+
 export const mapEntries = (rom: ROMFile): MapEntry[] =>
   memo(rom, "mapEntries", () => {
     const owners = tilemapOwners(rom);
@@ -227,7 +249,7 @@ export const mapEntries = (rom: ROMFile): MapEntry[] =>
       for (const c of [...m.pltts].sort((a, b) => Number(a.conditional) - Number(b.conditional))) {
         if (!pltts.some((p) => JSON.stringify(p.args.p) === JSON.stringify(c.args.p))) pltts.push(c);
       }
-      entries.push({ root: m.root, loads: m, scenes: buildScenes(m, owned), pltts });
+      entries.push({ root: m.root, loads: m, scenes: buildScenes(m, owned), pltts, stage: mapStage(rom, m) });
     }
     return entries;
   });
