@@ -13,6 +13,7 @@ import { FontViewer } from "./view_font.tsx";
 import { TilemapViewer } from "./view_tilemap.tsx";
 import { CollisionViewer } from "./view_collision.tsx";
 import { MapViewer } from "./view_map.tsx";
+import { SoundViewer, VolumeControl } from "./view_sound.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
@@ -27,6 +28,7 @@ const TABS = [
   ["collision", "Collision"],
   ["font", "Font"],
   ["script", "Script"],
+  ["sound", "Sound"],
 ] as const;
 type Tab = typeof TABS[number][0];
 
@@ -108,7 +110,12 @@ const App = () => {
         </p>
       )}
       {error && <p class="error">{error}</p>}
-      {rom && <p>{rom.name} ({rom.id})</p>}
+      {rom && (
+        <p class="controls">
+          <span>{rom.name} ({rom.id})</span>
+          <VolumeControl />
+        </p>
+      )}
       {rom && (
         <div class="app-body">
           <nav class="tabs">
@@ -126,6 +133,7 @@ const App = () => {
             {tab === "collision" && <CollisionViewer rom={rom} />}
             {tab === "font" && <FontViewer rom={rom} />}
             {tab === "script" && <ScriptViewer rom={rom} />}
+            {tab === "sound" && <SoundViewer rom={rom} />}
           </div>
         </div>
       )}

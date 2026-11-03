@@ -1,6 +1,6 @@
 // boktai2 decomp のヘッダとソースから、ビューワが使う表を generated/ に作る
 // - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID, スクリプトID, 文字列ID の定数名
-//   タイルマップ・当たり判定マップのファイルID (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h)
+//   タイルマップ・当たり判定マップのファイルID, 曲番号 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h, songs.h)
 // - aux_anims.ts: AuxSprite とアニメファイルの組 (ソース中で一緒に使われているもの)
 // - bgpltt_refs.ts: BG パレットがソース中で読まれている場所
 // - particle_refs.ts: パーティクルのグループと同じ関数で使われているアニメファイルと OBJ パレット, グループのポーズ名
@@ -31,9 +31,9 @@ type Define = { name: string; id: number; desc: string };
 const parseDefines = (src: string, prefix: RegExp): Define[] => {
   const defs: Define[] = [];
   for (const line of src.split("\n")) {
-    const m = line.match(/^#define (\w+)\s+(0x[0-9A-Fa-f]+|BOKHASH\("([^"]+)"\))\s*(?:\/\/\s*(.*))?$/);
+    const m = line.match(/^#define (\w+)\s+(0x[0-9A-Fa-f]+|\d+|BOKHASH\("([^"]+)"\))\s*(?:\/\/\s*(.*))?$/);
     if (!m || !prefix.test(m[1])) continue;
-    const id = m[3] !== undefined ? bokhash(m[3]) : parseInt(m[2], 16);
+    const id = m[3] !== undefined ? bokhash(m[3]) : m[2].startsWith("0x") ? parseInt(m[2], 16) : parseInt(m[2], 10);
     const desc = (m[4] ?? "").replace(/^0x[0-9A-Fa-f]{4}(,\s*|$)/, ""); // 値そのものの注記は除く
     defs.push({ name: m[1], id, desc });
   }
@@ -45,6 +45,7 @@ const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
 const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);
 const collisions = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/collision_map.h`), /^HP_/);
+const songs = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/songs.h`), /^(SONG|BGM|SE|ME|CRY|NOISE|VO|SOUND)_/);
 const strings = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/strings.h`), /^(STR|BIN)_/);
 
 // `#define Script_StaffRoll Script_0x1040 // desc` を拾う
@@ -98,6 +99,11 @@ ${nameTable(collisions)}
 // スクリプトID -> [名前, 説明] (include/constants/script.h in boktai2 decomp)
 export const SCRIPT_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(scriptNames)}
+};
+
+// 曲番号 (gSongTable の添字) -> [定数名, 説明] (include/constants/songs.h in boktai2 decomp)
+export const SONG_NAMES: Record<number, [name: string, desc: string]> = {
+${nameTable(songs)}
 };
 
 // 文字列ID (StringRef) -> [定数名, 説明] (include/constants/strings.h in boktai2 decomp)
