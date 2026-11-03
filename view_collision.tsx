@@ -87,7 +87,7 @@ export const CollisionViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =>
   // マップを切り替えても表示設定は引き継ぐ
   const [mode, setMode] = useState<Mode>("height");
   const [overlays, setOverlays] = useState<Overlays>({ zones: true, paths: true, navMesh: false });
-  const [scale, setScale] = useState(2);
+  const [scale, setScale] = useState(3);
 
   return (
     <div class="viewer">

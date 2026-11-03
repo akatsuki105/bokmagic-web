@@ -32,7 +32,13 @@ type Tab = typeof TABS[number][0];
 const tabFromHash = (): Tab => TABS.find(([id]) => location.hash.slice(1).split("/")[0] === id)?.[0] ?? "main";
 
 const App = () => {
-  const [rom, setRom] = useState<ROMFile | null>(null);
+  const [rom, setRomState] = useState<ROMFile | null>(null);
+  // ROM を読み込むたびに増やす, タブの中身をこれで作り直して前の ROM の選択状態を持ち越さないようにする
+  const [romSerial, setRomSerial] = useState(0);
+  const setRom = (r: ROMFile) => {
+    setRomState(r);
+    setRomSerial((n) => n + 1);
+  };
   const [error, setError] = useState<string | null>(null);
   const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
   const [tab, setTab] = useState<Tab>(tabFromHash());
@@ -106,16 +112,18 @@ const App = () => {
           <nav class="tabs">
             {TABS.map(([id, label]) => <a key={id} href={`#${id}`} class={id === tab ? "tab selected" : "tab"}>{label}</a>)}
           </nav>
-          {tab === "main" && <MainSpriteViewer rom={rom} />}
-          {tab === "aux" && <AuxSpriteViewer rom={rom} />}
-          {tab === "particle" && <ParticleViewer rom={rom} />}
-          {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
-          {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
-          {tab === "tileset" && <TilesetViewer rom={rom} />}
-          {tab === "tilemap" && <TilemapViewer rom={rom} />}
-          {tab === "collision" && <CollisionViewer rom={rom} />}
-          {tab === "font" && <FontViewer rom={rom} />}
-          {tab === "script" && <ScriptViewer rom={rom} />}
+          <div key={romSerial} class="tab-body">
+            {tab === "main" && <MainSpriteViewer rom={rom} />}
+            {tab === "aux" && <AuxSpriteViewer rom={rom} />}
+            {tab === "particle" && <ParticleViewer rom={rom} />}
+            {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
+            {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
+            {tab === "tileset" && <TilesetViewer rom={rom} />}
+            {tab === "tilemap" && <TilemapViewer rom={rom} />}
+            {tab === "collision" && <CollisionViewer rom={rom} />}
+            {tab === "font" && <FontViewer rom={rom} />}
+            {tab === "script" && <ScriptViewer rom={rom} />}
+          </div>
         </div>
       )}
     </div>

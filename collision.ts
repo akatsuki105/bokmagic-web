@@ -112,3 +112,28 @@ export const parseCollisionMap = (rom: DataView, { id, offset }: FileEntry): Col
 
   return { id, compressed: !raw, unk_0: u32(td), width, height, tilemapOffsetX: s16(td + 8), tilemapOffsetY: s16(td + 10), tiles, zones, paths, navMesh };
 };
+
+// ワールド座標 (x, z は 1 タイル = 256, y は高さで 1 段 = 256) を、対になるタイルマップのピクセル座標にする
+// MainSprite_DrawListInternal のワールド -> 画面の投影に、BG のスクロール (hofs = カメラ.x + tilemapX - 120, Camera_SetTilemapOffset の tilemapX = tilemapOffsetX >> 4) を足すとカメラが消えてこの形になる
+export const projectToTilemap = (c: CollisionMap, x: number, z: number, y: number): [number, number] => {
+  const a = Math.trunc((((x >> 1) + (z >> 1)) * 48) / 256);
+  const b = Math.trunc((y * 24) / 256);
+  return [Math.trunc((((x >> 1) - (z >> 1)) * 48) / 256) + (c.tilemapOffsetX >> 4), a - b + (c.tilemapOffsetY >> 4)];
+};
+
+// タイル (tx, tz) の上面の4隅 (左奥, 右奥, 右手前, 左手前 の順でなく x0z0, x1z0, x1z1, x0z1) のワールド座標の高さ
+// 階段は Map_HasLineOfSight と同じく、縦 (1) は z、横 (2) は x の下位8ビットだけ低くなる
+export const tileCornerHeights = (t: CollisionTile): [number, number, number, number] => {
+  const h = t.height << 8;
+  if (t.stairs === 1) return [h, h, h - 255, h - 255];
+  if (t.stairs === 2) return [h, h - 255, h - 255, h];
+  return [h, h, h, h];
+};
+
+// タイル (tx, tz) の上面をタイルマップ上の4点にする
+export const tileQuad = (c: CollisionMap, tx: number, tz: number): [number, number][] => {
+  const t = c.tiles[tz * c.width + tx];
+  const [h00, h10, h11, h01] = tileCornerHeights(t);
+  const x0 = tx * 256, x1 = x0 + 256, z0 = tz * 256, z1 = z0 + 256;
+  return [projectToTilemap(c, x0, z0, h00), projectToTilemap(c, x1, z0, h10), projectToTilemap(c, x1, z1, h11), projectToTilemap(c, x0, z1, h01)];
+};

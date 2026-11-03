@@ -2,7 +2,7 @@
 
 import type { ROMFile } from "./rom.ts";
 import { decodeScript, parseScriptDirectory, type ScriptDirectory } from "./script.ts";
-import { type LoadCall, ScriptScanner, SUB_LOAD_COLLISION, SUB_LOAD_TILEMAP, SUB_LOAD_TILESET, SUB_MAP_PLTT } from "./script_scan.ts";
+import { type LoadCall, ScriptScanner, SUB_CREATE_BG, SUB_LOAD_COLLISION, SUB_LOAD_TILEMAP, SUB_LOAD_TILESET, SUB_MAP_PLTT } from "./script_scan.ts";
 import { InsnType, type Instruction } from "./bokcc/instruction.ts";
 
 const cache = new WeakMap<ROMFile, Map<string, unknown>>();
@@ -43,6 +43,7 @@ export type MapLoads = {
   tilemaps: LoadCall[];
   tilesets: LoadCall[];
   pltts: LoadCall[];
+  bgs: LoadCall[]; // Cmd_CreateBG, BG の優先度を決める
   collisions: LoadCall[];
 };
 
@@ -56,6 +57,7 @@ export const mapLoads = (rom: ROMFile): MapLoads[] =>
         tilemaps: calls.filter((c) => c.sub === SUB_LOAD_TILEMAP),
         tilesets: calls.filter((c) => c.sub === SUB_LOAD_TILESET),
         pltts: calls.filter((c) => c.sub === SUB_MAP_PLTT),
+        bgs: calls.filter((c) => c.sub === SUB_CREATE_BG),
         collisions: calls.filter((c) => c.sub === SUB_LOAD_COLLISION),
       };
     }).filter((m) => m.tilemaps.length > 0);

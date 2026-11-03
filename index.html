@@ -26,6 +26,9 @@
         gap: 1em;
         align-items: flex-start;
       }
+      .tab-body {
+        display: contents;
+      }
       .tabs {
         display: flex;
         flex-direction: column;
@@ -205,6 +208,20 @@
       }
       .script-loads {
         font-size: 12px;
+      }
+      .overlay-host {
+        position: relative;
+        width: fit-content;
+        margin: 0.5em 0;
+      }
+      .overlay-host .canvas-wrap {
+        margin: 0;
+      }
+      .collision-overlay {
+        position: absolute;
+        top: 0;
+        left: 0;
+        pointer-events: none;
       }
       .collision-canvas {
         display: block;

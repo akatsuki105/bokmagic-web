@@ -11,6 +11,7 @@ import { decodeScript, type ScriptDirectory } from "./script.ts";
 export const SUB_LOAD_TILESET = 0x11D4; // Cmd_LoadTileSet, .t BG, .d タイルセット, .c 部品IDの列, .s 読み込み先, .m タイルマップ (読み込み先をその loadOffset にする)
 export const SUB_LOAD_TILEMAP = 0x7A27; // Cmd_LoadTileMap, .d タイルマップ, .t BG の構成, .n レイヤ数, .i / .c レイヤの並び
 export const SUB_MAP_PLTT = 0x4AE5; // Entity4AE5_Create, EntityCreate で呼ばれる, .p BG パレットの列 (最大4)
+export const SUB_CREATE_BG = 0xB4B4; // Cmd_CreateBG, EntityCreate で呼ばれる, .i BG 番号, .p BG の優先度, .d タイルマップ
 export const SUB_LOAD_COLLISION = 0x30AD; // Map_LoadMapScripted, .p 当たり判定マップ
 
 const OP_ASSIGN = 22; // "=" (bokcc/instruction.ts の OPERATORS)
@@ -195,7 +196,7 @@ export class ScriptScanner {
         if (head === SUB_LOAD_TILESET || head === SUB_LOAD_TILEMAP || head === SUB_LOAD_COLLISION) this.record(script, head, i, env);
         return;
       case ControlType.EntityCreate:
-        if (head === SUB_MAP_PLTT) this.record(script, head, i, env);
+        if (head === SUB_MAP_PLTT || head === SUB_CREATE_BG) this.record(script, head, i, env);
         return;
     }
   }

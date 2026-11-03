@@ -111,17 +111,41 @@ const drawMetatile = (out: Uint32Array, width: number, x: number, y: number, map
   }
 };
 
-export const renderLayer = (map: Tilemap, layer: TilemapLayer, vram: Uint8Array, colors: Uint32Array, transparent0: boolean): Rendered => {
-  const width = layer.width * 16, height = layer.height * 16;
-  const image = new ImageData(Math.max(1, width), Math.max(1, height));
+// レイヤを layers の順 (奥 -> 手前) に重ねて描く, 大きさは一番大きいレイヤに合わせる
+// transparent0 は一番奥のレイヤにだけ効き、それより手前のレイヤの色0 は常に透明
+export const renderLayers = (map: Tilemap, layers: TilemapLayer[], vram: Uint8Array, colors: Uint32Array, transparent0: boolean): Rendered => {
+  const width = Math.max(16, ...layers.map((l) => l.width * 16)), height = Math.max(16, ...layers.map((l) => l.height * 16));
+  const image = new ImageData(width, height);
   const out = new Uint32Array(image.data.buffer);
-  for (let my = 0; my < layer.height; my++) {
-    for (let mx = 0; mx < layer.width; mx++) {
-      drawMetatile(out, width, mx * 16, my * 16, map, layer.mtmap[mtmapIndex(layer, mx, my)], vram, colors, transparent0);
+  layers.forEach((layer, k) => {
+    for (let my = 0; my < layer.height; my++) {
+      for (let mx = 0; mx < layer.width; mx++) {
+        drawMetatile(out, width, mx * 16, my * 16, map, layer.mtmap[mtmapIndex(layer, mx, my)], vram, colors, k > 0 || transparent0);
+      }
     }
-  }
+  });
   return { image, originX: 0, originY: 0 };
 };
+
+// Cmd_LoadTileMap の '.t' (BG の構成) ごとに、レイヤを割り当てる BG の並び (Video_SetupBGLayout の分岐表)
+// 1, 4, 5 は '.n' が 2 のときだけ2つ目の BG を使う
+const LAYOUT_BGS: Record<number, number[]> = { 0: [0], 1: [2, 3], 2: [3], 3: [1], 4: [1, 3], 5: [2, 1], 6: [1], 7: [2, 3, 1] };
+const LAYOUT_TWO = new Set([1, 4, 5]);
+
+// レイヤ番号 -> BG 番号, indices は '.i' (k 番目の BG に載せるレイヤ番号, 無ければ k)
+export const layerBGs = (layout: number, count: number, indices?: (number | null)[]): Map<number, number> => {
+  const bgs = LAYOUT_BGS[layout] ?? [2];
+  const n = LAYOUT_TWO.has(layout) ? (count === 2 ? 2 : 1) : bgs.length;
+  const map = new Map<number, number>();
+  for (let k = 0; k < n; k++) map.set(indices?.[k] ?? k, bgs[k]);
+  return map;
+};
+
+// BG の優先度の既定値 (Video_InitBGMode, Cmd_CreateBG の '.p' の既定値と同じ), 小さいほど手前
+export const DEFAULT_BG_PRIO: Record<number, number> = { 0: 0, 1: 1, 2: 3, 3: 1 };
+
+// 奥にあるほど大きい値, 優先度が同じなら番号の小さい BG が手前 (GBA のハードウェアの規則)
+export const bgDepth = (bg: number, prio: number) => prio * 4 + bg;
 
 // メタタイルを番号順に cols 個ずつ並べる
 export const renderMetatiles = (map: Tilemap, vram: Uint8Array, colors: Uint32Array, transparent0: boolean, cols = 16): Rendered => {
