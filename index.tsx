@@ -4,11 +4,13 @@ import { LoadROM, type ROMFile } from "./rom.ts";
 import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
+import { ObjPaletteViewer } from "./view_objpltt.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
 const TABS = [
   ["main", "MainSprite"],
   ["aux", "AuxSprite"],
+  ["objpltt", "OBJ Palette"],
 ] as const;
 type Tab = typeof TABS[number][0];
 
@@ -89,7 +91,9 @@ const App = () => {
           <nav class="tabs">
             {TABS.map(([id, label]) => <a key={id} href={`#${id}`} class={id === tab ? "tab selected" : "tab"}>{label}</a>)}
           </nav>
-          {tab === "main" ? <MainSpriteViewer rom={rom} /> : <AuxSpriteViewer rom={rom} />}
+          {tab === "main" && <MainSpriteViewer rom={rom} />}
+          {tab === "aux" && <AuxSpriteViewer rom={rom} />}
+          {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
         </div>
       )}
     </div>

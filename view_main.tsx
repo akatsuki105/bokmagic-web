@@ -3,7 +3,7 @@
 import { FunctionComponent } from "preact";
 import { useCallback, useMemo, useRef, useState } from "preact/hooks";
 import { DIR_MAIN_SPRITE, type FileEntry } from "./fs.ts";
-import type { ObjPltt } from "./pltt.ts";
+import type { ObjPltt } from "./objpltt.ts";
 import type { ROMFile } from "./rom.ts";
 import { type MainSpriteGfx, parseMainSprite, poseToObjs } from "./sprite_main.ts";
 import { renderObjs } from "./render.ts";
@@ -24,7 +24,7 @@ export const MainSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =
           </li>
         ))}
       </ul>
-      <MainSpriteView key={selected.id} id={selected.id} gfx={gfx} pltt={rom.pltt} />
+      <MainSpriteView key={selected.id} id={selected.id} gfx={gfx} pltt={rom.objPltt} />
     </div>
   );
 };

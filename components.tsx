@@ -2,7 +2,7 @@
 
 import { FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
-import type { ObjPltt } from "./pltt.ts";
+import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
 import { SPRITE_NAMES } from "./sprite_names.ts";
 

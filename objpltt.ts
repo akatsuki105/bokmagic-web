@@ -5,6 +5,8 @@ import { DIR_OBJPLTT, FileSystem } from "./fs.ts";
 // gObjPlttData: 16色パレットの配列, plttID 番目は colors[plttID * 16 ...]
 export type ObjPltt = {
   length: number; // 16色パレットの個数
+  unk_02: number;
+  raw: Uint16Array; // ROM にある rgb555 のまま
   colors: Uint32Array; // RGBA8888 (ImageData にそのまま書ける並び), 色0 も不透明のまま持つ
 };
 
@@ -22,7 +24,7 @@ export const loadObjPltt = (rom: DataView, fs: FileSystem): ObjPltt => {
   const f = fs.get(DIR_OBJPLTT, OBJPLTT_FILE);
   if (f === undefined) throw new Error("ObjPlttFile not found");
   const length = rom.getUint16(f, true);
-  const colors = new Uint32Array(length * 16);
-  for (let i = 0; i < colors.length; i++) colors[i] = rgb555ToRGBA(rom.getUint16(f + 4 + i * 2, true));
-  return { length, colors };
+  const raw = new Uint16Array(length * 16);
+  for (let i = 0; i < raw.length; i++) raw[i] = rom.getUint16(f + 4 + i * 2, true);
+  return { length, unk_02: rom.getUint16(f + 2, true), raw, colors: Uint32Array.from(raw, rgb555ToRGBA) };
 };

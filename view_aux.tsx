@@ -2,7 +2,7 @@
 
 import { FunctionComponent } from "preact";
 import { useCallback, useEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ObjPltt } from "./pltt.ts";
+import type { ObjPltt } from "./objpltt.ts";
 import type { ROMFile } from "./rom.ts";
 import { auxPoseToObjs, type AuxSpriteGfx, parseAuxSprites } from "./sprite_aux.ts";
 import { ANIM_PLAY_REVERSE, ANIM_PLAY_XFLIP, ANIM_PLAY_YFLIP, type AuxAnimFile, AuxAnimState, cmdDuration, cmdFlip, cmdPose, parseAuxAnimFiles } from "./anim_aux.ts";
@@ -25,7 +25,7 @@ export const AuxSpriteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =>
           </li>
         ))}
       </ul>
-      <AuxSpriteView key={selected.id} gfx={selected} pltt={rom.pltt} animFiles={animFiles} />
+      <AuxSpriteView key={selected.id} gfx={selected} pltt={rom.objPltt} animFiles={animFiles} />
     </div>
   );
 };

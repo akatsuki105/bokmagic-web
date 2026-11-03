@@ -1,6 +1,6 @@
 import * as gba from "./gba.ts";
 import { FileSystem } from "./fs.ts";
-import { loadObjPltt, type ObjPltt } from "./pltt.ts";
+import { loadObjPltt, type ObjPltt } from "./objpltt.ts";
 
 const GAME_IDS = ["U32J_rev1"] as const;
 type gameid = typeof GAME_IDS[number];
@@ -15,7 +15,7 @@ export type ROMFile = {
   id: gameid;
   data: DataView; // file data
   fs: FileSystem;
-  pltt: ObjPltt;
+  objPltt: ObjPltt; // gObjPlttData
 };
 
 export const LoadROM = (filename: string, data: ArrayBuffer): ROMFile => {
@@ -30,6 +30,6 @@ export const LoadROM = (filename: string, data: ArrayBuffer): ROMFile => {
     id: gameID,
     data: dv,
     fs,
-    pltt: loadObjPltt(dv, fs),
+    objPltt: loadObjPltt(dv, fs),
   };
 };
