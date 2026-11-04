@@ -7,24 +7,25 @@
 
 ## コマンドライン版
 
-### 用意
+### 置き場所
 
-このリポジトリで 1 ファイルにまとめ、使う側 (decomp など) に置く。依存は Deno だけで、ネットワークも使わない。
+GitHub Pages に画面と一緒に公開している (`.github/workflows/pages.yml` が main への push のたびに `deno task cli:bundle` で 1 ファイルにまとめて置く)。 Deno は URL のスクリプトをそのまま実行できるので、使う側 (decomp など) にはファイルを置かない。
 
-```sh
-deno task cli:bundle                        # dist/bokmagic.js ができる (dist/ はコミットしない)
-cp dist/bokmagic.js <decomp>/tools/bokmagic.js
+```
+https://akatsuki105.github.io/bokmagic-web/bokmagic.js
 ```
 
-コードを直したら、もう一度バンドルして置き直す。
+- ROM は使う側の手元のものを読むだけで、どこにも送らない
+- Deno は取得したスクリプトを手元にキャッシュして使い回す。新しい版を使うときは `--reload` を付けて 1 回実行する
+- 手元で試すときは `deno task cli:bundle` で `dist/bokmagic.js` を作り (`dist/` はコミットしない)、そのファイルを `deno run` する
 
 ### 使い方
 
 ```sh
-deno run --allow-read --allow-write tools/bokmagic.js <rom.gba> <command> [target] [options]
+deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/bokmagic.js <rom.gba> <command> [target] [options]
 ```
 
-- `--allow-read` は ROM を読むため、`--allow-write` は PNG を書くため (`-o` を使わないなら要らない)
+- `--allow-read` は ROM を読むため、`--allow-write` は PNG を書くため (`-o` を使わないなら要らない)。スクリプトの取得にはネットワークの権限は要らない
 - 引数なしで動かすと使い方を出す
 - 結果は常に JSON で標準出力に出す。エラーは標準エラー出力に出し、使い方の誤りは終了コード 2、それ以外の失敗は 1
 
@@ -54,18 +55,20 @@ ID は `0x5D36` のような 16 進数で書く。U32J rev1 では decomp の定
 
 ### 例
 
+`BOKMAGIC=https://akatsuki105.github.io/bokmagic-web/bokmagic.js` として:
+
 ```sh
 # シェードマンのポーズ 3 を 3 倍で書き出す
-deno run --allow-read --allow-write tools/bokmagic.js baserom.gba sprite SPRITE_SHADEMAN --pose 3 --scale 3 -o shademan.png
+deno run --allow-read --allow-write $BOKMAGIC baserom.gba sprite SPRITE_SHADEMAN --pose 3 --scale 3 -o shademan.png
 
 # AuxSprite の全ポーズを 1 枚に並べる
-deno run --allow-read --allow-write tools/bokmagic.js baserom.gba aux SPRITE_EFF_1C1B --sheet --scale 2 -o eff.png
+deno run --allow-read --allow-write $BOKMAGIC baserom.gba aux SPRITE_EFF_1C1B --sheet --scale 2 -o eff.png
 
 # マップ (Script_0x048C が読み込むもの) を、スクリプトが指定するパレットで合成して書き出す
-deno run --allow-read --allow-write tools/bokmagic.js baserom.gba map 0x048C -o map.png
+deno run --allow-read --allow-write $BOKMAGIC baserom.gba map 0x048C -o map.png
 
 # マップの一覧 (スクリプト ID, ステージ, 場面ごとのタイルマップと BG)
-deno run --allow-read tools/bokmagic.js baserom.gba list map
+deno run --allow-read $BOKMAGIC baserom.gba list map
 ```
 
 ### 画像の決まり

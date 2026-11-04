@@ -21,7 +21,7 @@ $ deno task bundle
 
 ## Deploy
 
-main に push すると `.github/workflows/pages.yml` がバンドルして GitHub Pages に公開する (公開するのは `index.html` と `bundle.js` だけ)
+main に push すると `.github/workflows/pages.yml` がバンドルして GitHub Pages に公開する (公開するのは画面の `index.html` と `bundle.js`、コマンドライン版の `bokmagic.js` だけ。コマンドライン版は [docs/cli.md](docs/cli.md))
 
 ## Dev
 

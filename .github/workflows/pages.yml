@@ -1,5 +1,5 @@
 # main に push したら、バンドルして GitHub Pages に公開する
-# 公開するのは index.html と bundle.js だけ (ROM やドキュメントは載せない)
+# 公開するのは index.html, bundle.js (画面) と bokmagic.js (コマンドライン版, deno run <URL> で実行する) だけ (ROM やドキュメントは載せない)
 # リポジトリの Settings → Pages → Build and deployment の Source を「GitHub Actions」にしておく必要がある
 
 name: Deploy to GitHub Pages
@@ -30,15 +30,17 @@ jobs:
           deno-version: v2.9.x
 
       - name: Check
-        run: deno check index.tsx
+        run: deno check index.tsx cli/main.ts
 
       - name: Bundle
-        run: deno task bundle
+        run: |
+          deno task bundle
+          deno task cli:bundle
 
       - name: Collect files
         run: |
           mkdir _site
-          cp index.html bundle.js _site/
+          cp index.html bundle.js dist/bokmagic.js _site/
 
       - uses: actions/configure-pages@v5
 

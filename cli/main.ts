@@ -1,8 +1,8 @@
 // bokmagic-web のコマンドライン版: ROM のアセットの情報を JSON で出し、画像を PNG に書き出す
 // decomp 側のエージェントなどがブラウザを使わずにアセットを確かめるためのもの. 使い方は docs/cli.md
-// deno task cli:bundle で dist/bokmagic.js の 1 ファイルにまとめ、それを持っていって
-//   deno run --allow-read --allow-write bokmagic.js <rom.gba> <command> ...
-// で動かす
+// deno task cli:bundle で dist/bokmagic.js の 1 ファイルにまとめ、GitHub Pages に画面と一緒に公開する (.github/workflows/pages.yml)
+//   deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/bokmagic.js <rom.gba> <command> ...
+// のように URL から直接動かす
 
 import { LoadROM, type ROMFile } from "../rom.ts";
 import { DIR_MAIN_SPRITE } from "../fs.ts";
