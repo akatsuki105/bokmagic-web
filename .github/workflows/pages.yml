@@ -1,5 +1,5 @@
 # main に push したら、バンドルして GitHub Pages に公開する
-# 公開するのは index.html, bundle.js (画面) と bokmagic.js (コマンドライン版, deno run <URL> で実行する) だけ (ROM やドキュメントは載せない)
+# 公開するのは index.html, bundle.js (画面), bokmagic.js (コマンドライン版, deno run <URL> で実行する), THIRD_PARTY_LICENSES.txt だけ (ROM やドキュメントは載せない)
 # リポジトリの Settings → Pages → Build and deployment の Source を「GitHub Actions」にしておく必要がある
 
 name: Deploy to GitHub Pages
@@ -37,10 +37,12 @@ jobs:
           deno task bundle
           deno task cli:bundle
 
+      # bundle.js には preact (MIT) が入るので、先頭にライセンスの全文をコメントで付け、ファイルとしても一緒に置く
       - name: Collect files
         run: |
           mkdir _site
-          cp index.html bundle.js dist/bokmagic.js _site/
+          { printf '/*!\n'; cat THIRD_PARTY_LICENSES.txt; printf '*/\n'; cat bundle.js; } > _site/bundle.js
+          cp index.html dist/bokmagic.js THIRD_PARTY_LICENSES.txt _site/
 
       - uses: actions/configure-pages@v5
 

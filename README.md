@@ -4,6 +4,17 @@
 
 作りと ROM データの読み方は [docs/](docs/README.md) にまとめてある
 
+## 参考にしたもの
+
+- Raphael Robatsch さんの [bokmagic](https://git.sr.ht/~raphi/bokmagic) (Qt 製のアセットビューワ): このリポジトリとは別のプロジェクトで、コードは共有していない。ROM のデータの読み方を調べるときに参考にさせていただいた
+- [Boktai Hacking Wiki](https://boktaihacking.net/wiki/Category:Boktai_2): ROM のデータの調査でとてもお世話になった
+
+先行して作られたツールと、調査をまとめてくださった方々に感謝します。
+
+## ライセンス
+
+公開している `bundle.js` には [preact](https://github.com/preactjs/preact) (MIT License) が入っている。ライセンスの全文は [THIRD_PARTY_LICENSES.txt](THIRD_PARTY_LICENSES.txt) にあり、公開時に `bundle.js` の先頭にも付ける
+
 ## 対応している ROM
 
 - 続・ボクらの太陽 (U32J rev1)
