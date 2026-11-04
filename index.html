@@ -14,26 +14,31 @@
     <style>
       :root {
         color-scheme: light dark;
+        /* ダークモードの地の色は、ごく弱い青みの灰色 (スレート). 外側ほど暗く、読む所ほど明るくして、線を引かずに領域を区切る
+           ヘッダとタブ (--bg-side) < 一覧 (--bg-list) < 本文 (--bg-body) < カード (--bg-card). ライトモードは暖かい白で、カード以外は同じ色 */
+        --bg-side: light-dark(#efedea, #17191d);
+        --bg-list: light-dark(#efedea, #1c1f24);
+        --bg-body: light-dark(#efedea, #22252b);
+        --bg-card: light-dark(#f8f7f5, #2b2f36);
+        --border: light-dark(#cfcac3, #3b4049);
+        /* 絵の後ろの市松模様は、ドット絵の色の見え方を変えないよう無彩色のまま */
         --checker-a: light-dark(#ffffff, #3a3a3a);
         --checker-b: light-dark(#d8d8d8, #303030);
-        /* 目が疲れにくいように、ダークモードの文字は白でなく少し暗い灰色にする */
-        --text: light-dark(#333b3c, #d0d0d0);
-        --link: light-dark(#2f55c9, #8ea6e6);
-        /* ダークモードでは領域ごとに背景の明るさを少し変えて、線を引かずに区切る (外側ほど暗く: ヘッダとタブ < 一覧 < 本文). ライトモードは同じ色 */
-        --bg-side: light-dark(#efedea, #1f1f1f);
-        --bg-list: light-dark(#efedea, #242424);
-        --stripe: light-dark(transparent, rgb(255 255 255 / 0.08)); /* 一覧の偶数行 (明るく) */
-        --stripe-odd: light-dark(transparent, rgb(0 0 0 / 0.15)); /* 一覧の奇数行 (暗く) */
-        /* 右の欄のカードと、控えめな文字 (説明, 表の項目名, カードの見出し) */
-        --bg-card: light-dark(#f8f7f5, #303030);
-        --text-dim: light-dark(#6f7374, #9c9c9c);
-        --border: light-dark(#cfcac3, #464646);
+        /* 目が疲れにくいように、ダークモードの文字は白でなく少し暗い灰色にする. 控えめな文字は説明, 表の項目名, カードの見出し */
+        --text: light-dark(#333b3c, #d3d7dd);
+        --text-dim: light-dark(#6f7374, #8c939d);
+        --link: light-dark(#2f55c9, #91a9f2);
+        --error: light-dark(#cc3333, #ff8080);
+        /* 選択と強調は青の 1 系統 */
+        --accent: light-dark(#4a6cff, #7290ff);
+        --bg-selected: light-dark(#cfd8ff, #34415f);
+        /* 一覧の縞 */
+        --stripe: light-dark(transparent, rgb(255 255 255 / 0.06)); /* 偶数行 (明るく) */
+        --stripe-odd: light-dark(transparent, rgb(0 0 0 / 0.18)); /* 奇数行 (暗く) */
         /* ボタンと入力欄 (ブラウザ標準の見た目は暗い画面で浮くので自分で塗る) */
-        --bg-input: light-dark(#ffffff, #1d1d1d);
-        --bg-button: light-dark(#e9e6e2, #3b3b3b);
-        --bg-button-hover: light-dark(#dedad4, #474747);
-        --accent: #5b7bff;
-        --bg-selected: light-dark(#cfd8ff, #3a4470);
+        --bg-input: light-dark(#ffffff, #16181c);
+        --bg-button: light-dark(#e9e6e2, #353a43);
+        --bg-button-hover: light-dark(#dedad4, #40464f);
         /* 英数字と日本語で字形がそろうように、フォントを具体的に指定する (日本語は等幅でもヒラギノなどの同じゴシックで出す) */
         --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
         --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", monospace;
@@ -45,7 +50,7 @@
       }
       body {
         color: var(--text);
-        background-color: light-dark(#efedea, #282828);
+        background-color: var(--bg-body);
         font-family: var(--font-sans);
         font-size: 16px;
         line-height: 1.6;
@@ -109,7 +114,7 @@
         gap: 4px 16px;
         padding: 6px 12px;
         background: var(--bg-side);
-        border-bottom: 1px solid light-dark(#cfcac3, transparent);
+        border-bottom: 1px solid light-dark(#cfcac3, transparent); /* ダークモードは背景の違いで区切る */
       }
       .app-header h1 {
         font-size: 18px;
@@ -138,7 +143,7 @@
       .saved-roms td {
         padding: 4px 12px 4px 0;
         text-align: left;
-        border-bottom: 1px solid light-dark(#dcd7d0, #3a3a3a);
+        border-bottom: 1px solid var(--border);
       }
       .saved-roms th {
         font-weight: normal;
@@ -153,7 +158,7 @@
         height: 1.5em;
       }
       .error {
-        color: #d33;
+        color: var(--error);
       }
       .app-body {
         flex: 1;
@@ -183,8 +188,8 @@
         border-left: 3px solid transparent;
       }
       .tab.selected {
-        background: light-dark(#cfd8ff, #3a4470);
-        border-left-color: #4a6cff;
+        background: var(--bg-selected);
+        border-left-color: var(--accent);
       }
       .viewer {
         flex: 1;
@@ -251,7 +256,7 @@
         background: var(--stripe);
       }
       .sprite-list li.selected {
-        background: light-dark(#cfd8ff, #3a4470);
+        background: var(--bg-selected);
       }
       .sprite-view {
         flex: 1;
@@ -453,8 +458,8 @@
         border-left: 3px solid transparent;
       }
       .bgpltt-grid .pltt-row.selected {
-        background: light-dark(#cfd8ff, #3a4470);
-        border-left-color: #4a6cff;
+        background: var(--bg-selected);
+        border-left-color: var(--accent);
       }
       .bokc {
         font-family: var(--font-mono);
@@ -465,8 +470,8 @@
         overflow-x: auto;
         margin: 0;
         padding: 0.75em 1em;
-        background: light-dark(#e2dfda, #333333);
-        border: 1px solid light-dark(#cfcac3, #444444);
+        background: var(--bg-card);
+        border: 1px solid var(--border);
         border-radius: 4px;
       }
       .aliases {
@@ -484,7 +489,7 @@
         opacity: 0.5;
       }
       button.selected {
-        outline: 2px solid #4a6cff;
+        outline: 2px solid var(--accent);
       }
       .script-loads {
         font-size: 14px;
@@ -564,7 +569,7 @@
         cursor: pointer;
       }
       .legend-item.selected {
-        outline: 2px solid #4a6cff;
+        outline: 2px solid var(--accent);
       }
       .mono {
         font-family: var(--font-mono);
@@ -588,7 +593,7 @@
         font-size: 12px;
       }
       .thumb.selected {
-        border-color: #4a6cff;
+        border-color: var(--accent);
       }
       .anim-panel {
         margin: 0;
@@ -614,7 +619,7 @@
         cursor: pointer;
       }
       .anim-cmd.current {
-        background: light-dark(#cfd8ff, #3a4470);
+        background: var(--bg-selected);
       }
       .thumb .canvas-wrap {
         margin: 0;
