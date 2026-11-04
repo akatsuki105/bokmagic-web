@@ -19,6 +19,10 @@ MP2K (m4a, いわゆる Sappy) の曲を PCM に書き出すモジュール. デ
 $ deno task bundle
 ```
 
+## Deploy
+
+main に push すると `.github/workflows/pages.yml` がバンドルして GitHub Pages に公開する (公開するのは `index.html` と `bundle.js` だけ)
+
 ## Dev
 
 http://localhost:8080/
