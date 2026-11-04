@@ -17,7 +17,7 @@ import { scriptHref } from "./view_script.tsx";
 import { collisionHref, collisionTileText } from "./view_collision.tsx";
 import { tilemapHref, tilemapLabel } from "./view_tilemap.tsx";
 import { bgplttHref } from "./view_bgpltt.tsx";
-import { bgpLabel, type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { bgpLabel, type BgPlttChoice, BgPlttSelect, Desc, hashID, hex4, InfoTable, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 import { STAGE_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 
@@ -71,10 +71,16 @@ export const MapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   );
 };
 
-// StageID と定数名・説明
+// ステージの説明 (include/constants/map.h のコメント全文), 見出しに出す短い名前と同じなら出さない
+const stageDesc = (stage: number | null) => {
+  const desc = stage === null ? undefined : decomp(STAGE_NAMES)[stage]?.[1];
+  return desc && desc !== stageShort(stage) ? desc : undefined;
+};
+
+// StageID と定数名
 const StageText: FunctionComponent<{ stage: number }> = ({ stage }) => {
   const name = decomp(STAGE_NAMES)[stage];
-  return <>{stage}{name && ` ${name[0]} ${name[1]}`}</>;
+  return <>{stage}{name && ` ${name[0]}`}</>;
 };
 
 const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | undefined; bgFiles: BgPlttFile[] }> = ({ rom, entry, ts, bgFiles }) => {
@@ -87,11 +93,9 @@ const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | 
   return (
     <div class="sprite-view">
       <h2>
-        Map {hex4(entry.root)} {stageShort(entry.stage)} <a href={scriptHref(entry.root)} class="script-loads">Script タブで開く</a>
+        Map {hex4(entry.root)} {stageShort(entry.stage)}
       </h2>
-      <p>
-        ステージ: {entry.stage === null ? <span class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText stage={entry.stage} />}
-      </p>
+      <Desc text={stageDesc(entry.stage)} />
       {entry.scenes.length > 1 && (
         <div class="controls">
           場面 (if/switch で読み込むものが変わる, または同じ BG に読み直している):
@@ -165,7 +169,7 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
                 setHidden((cur) => (checked ? cur.filter((b) => b !== s.bg) : [...cur, s.bg]));
               }}
             />
-            BG{s.bg} (優先度 {s.prio}): <a href={tilemapHref(s.map.id)}>{hex4(s.map.id)}</a> layer #{s.layer} {s.map.layers[s.layer].width}x{s.map.layers[s.layer].height}
+            BG{s.bg} ({hex4(s.map.id)} #{s.layer})
           </label>
         ))}
         {state.slots.length === 0 && <span class="dim">BG に載るタイルマップがありません</span>}
@@ -216,7 +220,6 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
                 <input type="checkbox" checked={world[o]} onChange={(e) => setWorld({ ...world, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
               </label>
             ))}
-            <a href={collisionHref(colMap.id)}>Collision タブで開く</a>
           </>
         )}
       </div>
@@ -229,6 +232,30 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
         {colMap && (world.zones || world.paths || world.navMesh) && <WorldOverlay map={colMap} width={width} height={height} scale={scale} layers={world} />}
         {grid === "iso" && <IsoGrid width={width} height={height} scale={scale} origin={isoOrigin} />}
       </div>
+      <InfoTable
+        rows={[
+          ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root)}</a>],
+          ["stage", entry.stage === null ? <span key="v" class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText key="v" stage={entry.stage} />],
+          ...state.slots.slice().reverse().map((s): [string, ComponentChildren] => [
+            `BG${s.bg}`,
+            <span key="v">
+              優先度 {s.prio}, <a href={tilemapHref(s.map.id)}>{tilemapLabel(s.map.id, false)}</a> layer #{s.layer}, {s.map.layers[s.layer].width}x{s.map.layers[s.layer].height}
+            </span>,
+          ]),
+          ["palette", pltt.file === null ? "(grayscale)" : <a key="v" href={bgplttHref(pltt.file)}>{bgpLabel(pltt.file, false)}</a>],
+          [
+            "Collision Map",
+            colMap
+              ? (
+                <span key="v">
+                  <a href={collisionHref(colMap.id)}>{hex4(colMap.id)}</a>, {colMap.width}x{colMap.height} tiles
+                </span>
+              )
+              : <span key="v" class="dim">(なし)</span>,
+          ],
+          ["size", `${width}x${height} px`],
+        ]}
+      />
       <h3>読み込み</h3>
       <SceneLoads entry={entry} scene={scene} />
     </>

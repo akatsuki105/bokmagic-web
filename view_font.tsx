@@ -7,7 +7,7 @@ import { type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "./font.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./generated/charmap.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { bgpLabel, hex4, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
+import { bgpLabel, Desc, hex4, InfoTable, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
 
 // Font_SetPltt が 14・15 本目を差し替えるのに使う BG パレット (0: BGP_529C, 1: BGP_539C)
 const FONT_PLTTS = [0x529C, 0x539C];
@@ -48,12 +48,8 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         ))}
       </ul>
       <div class="sprite-view">
-        <h2>
-          {kind === "hankaku" ? "半角" : "全角"} ({gw}x{gh})
-        </h2>
-        <p>
-          file {hex4(font.id)}, hankaku: {font.hankakuCount}, zenkaku: {font.zenkakuCount}
-        </p>
+        <h2>{kind === "hankaku" ? "半角" : "全角"}</h2>
+        <Desc text={`${kind === "hankaku" ? "半角" : "全角"}の字形 (${gw}x${gh}) を番号順に並べています。style は Font_AcquireGlyph と同じく、各ドットに style << 2 を OR します`} />
         <div class="controls">
           {FONT_PLTTS.map((id, i) => (
             <label key={id}>
@@ -73,14 +69,24 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
             <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
           </label>
         </div>
-        <p class="mono">
-          {hover >= 0 && hover < count ? `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)") : "字形にマウスを乗せると番号と文字を表示します (style は Font_AcquireGlyph と同じく各ドットに style << 2 を OR する)"}
+        <p class="mono hover-line">
+          {hover >= 0 && hover < count && `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)")}
         </p>
         <SpriteCanvas
           rendered={rendered}
           scale={scale}
           grid={grid ? [gw, gh] : undefined}
           onHover={(x, y) => setHover(x < 0 ? -1 : Math.floor(y / gh) * cols + Math.floor(x / gw))}
+        />
+        <InfoTable
+          rows={[
+            ["file", hex4(font.id)],
+            ["glyph size", `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
+            ["glyphs", count],
+            ["hankaku", font.hankakuCount],
+            ["zenkaku", font.zenkakuCount],
+            ["palette", `${bgpLabel(plttFile, false)} row ${row}`],
+          ]}
         />
       </div>
     </div>

@@ -1,6 +1,6 @@
 // MainSprite と AuxSprite のビューワで共通に使う部品
 
-import { FunctionComponent } from "preact";
+import type { ComponentChildren, FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
 import type { ObjPltt } from "./objpltt.ts";
 import type { Rendered } from "./render.ts";
@@ -20,6 +20,20 @@ export const spriteLabel = (id: number, withDesc = true) => {
 
 // 見出しの下に出す説明 (decomp の定数のコメント), 無ければ何も出さない
 export const Desc: FunctionComponent<{ text?: string }> = ({ text }) => (text ? <p>{text}</p> : null);
+
+// 詳細の表 (本文の一番下に置く), [項目名, 値] の並び
+export const InfoTable: FunctionComponent<{ rows: [string, ComponentChildren][] }> = ({ rows }) => (
+  <table class="pltt-table info-table">
+    <tbody>
+      {rows.map(([k, v]) => (
+        <tr key={k}>
+          <th>{k}</th>
+          <td>{v}</td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
 
 export const spriteDesc = (id: number) => decomp(SPRITE_NAMES)[id]?.[1];
 export const bgpDesc = (id: number) => decomp(BGP_NAMES)[id]?.[1];

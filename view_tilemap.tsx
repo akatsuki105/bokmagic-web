@@ -14,7 +14,7 @@ import { mapEntries } from "./analysis.ts";
 import { mapHref } from "./view_map.tsx";
 import { TILEMAP_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { type BgPlttChoice, BgPlttSelect, Desc, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { type BgPlttChoice, BgPlttSelect, Desc, hashID, hex4, InfoTable, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 
 export const tilemapHref = (id: number) => `#tilemap/${hex4(id)}`;
 
@@ -97,16 +97,6 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
     <div class="sprite-view">
       <h2>{tilemapLabel(map.id, false)}</h2>
       <Desc text={decomp(TILEMAP_NAMES)[map.id]?.[1]} />
-      <p>
-        {map.compressed ? "LZ77" : "非圧縮"}, {map.size} bytes, layers: {map.layers.length}, tiles: {map.tileCount} ({map.tiles ? "ファイル内" : "ファイル外"}), metatiles: {map.metatileCount}, loadOffset: {map.loadOffset}
-      </p>
-      <p>
-        このタイルマップを使う Map: {maps.length === 0 ? <span class="dim">(スクリプトから見つかっていません)</span> : maps.map((root) => (
-          <a key={root} href={mapHref(root)} class="load-link">
-            {hex4(root)}
-          </a>
-        ))}
-      </p>
 
       <h3>読み込み元</h3>
       <div class="controls">
@@ -169,10 +159,32 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
           <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
         </label>
       </div>
-      <p class="mono">
+      <p class="mono hover-line">
         <HoverInfo map={map} view={view} layers={[...drawOrder].reverse()} x={hover[0]} y={hover[1]} />
       </p>
       <SpriteCanvas rendered={rendered} scale={scale} grid={grid ? (view === "tiles" ? 8 : 16) : undefined} onHover={(x, y) => setHover([x, y])} />
+      <InfoTable
+        rows={[
+          ["compression", map.compressed ? "LZ77" : "非圧縮"],
+          ["size", `${map.size} bytes`],
+          ["layers", map.layers.length],
+          ["tiles", `${map.tileCount} (${map.tiles ? "ファイル内" : "ファイル外"})`],
+          ["metatiles", map.metatileCount],
+          ["loadOffset", map.loadOffset],
+          [
+            "used by Map",
+            maps.length === 0 ? <span key="v" class="dim">(スクリプトから見つかっていません)</span> : (
+              <span key="v">
+                {maps.map((root) => (
+                  <a key={root} href={mapHref(root)} class="load-link">
+                    {hex4(root)}
+                  </a>
+                ))}
+              </span>
+            ),
+          ],
+        ]}
+      />
     </div>
   );
 };
@@ -180,7 +192,7 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
 // マウスの下にあるものの情報
 // layers は表示しているレイヤ番号 (手前から)
 const HoverInfo: FunctionComponent<{ map: Tilemap; view: string; layers: number[]; x: number; y: number }> = ({ map, view, layers, x, y }) => {
-  if (x < 0) return <span>マウスを乗せるとメタタイルやタイルの番号を表示します</span>;
+  if (x < 0) return null;
   const entries = (mt: number) => [0, 1, 2, 3].map((k) => hex4(map.metatiles[mt * 4 + k] ?? 0)).join(" ");
   if (view === "layer") {
     const mx = x >> 4, my = y >> 4;

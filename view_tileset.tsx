@@ -6,7 +6,7 @@ import type { ROMFile } from "./rom.ts";
 import { parseTileSets, type TileSet } from "./tileset.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { renderTileGrid } from "./render.ts";
-import { type BgPlttChoice, bgPlttColors, BgPlttSelect, hex4, NumberStepper, SpriteCanvas } from "./components.tsx";
+import { type BgPlttChoice, bgPlttColors, BgPlttSelect, hex4, InfoTable, NumberStepper, SpriteCanvas } from "./components.tsx";
 
 export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs), [rom]);
@@ -49,9 +49,6 @@ export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         <h2>
           part {hex4(ts.parts[partIdx].id)} (#{partIdx})
         </h2>
-        <p>
-          TileSetFile {hex4(ts.id)}: {ts.parts.length} parts, {ts.refCount} refs, {ts.tiles.length / 32} tiles, unk_2: {ts.unk_2}
-        </p>
         <div class="controls">
           <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} />
         </div>
@@ -91,11 +88,20 @@ const PartView: FunctionComponent<{ ts: TileSet; partIdx: number; colors: Uint32
 
   return (
     <>
-      <p>
-        tiles: {part.tileCount}, startIndex: {hex4(part.startIndex)} (refs[{part.startIndex / 2}]), refs → tiles[{min}..{max}]
-      </p>
-      <p class="mono">{hover >= 0 ? `#${hover} (読み込み先の先頭 + ${hover}) → tiles[${part.refs[hover]}]` : "タイルにマウスを乗せると番号を表示します"}</p>
+      <p class="mono hover-line">{hover >= 0 && `#${hover} (読み込み先の先頭 + ${hover}) → tiles[${part.refs[hover]}]`}</p>
       <SpriteCanvas rendered={rendered} scale={scale} grid={grid ? 8 : undefined} onHover={onHover} />
+      <InfoTable
+        rows={[
+          ["part tiles", part.tileCount],
+          ["startIndex", `${hex4(part.startIndex)} (refs[${part.startIndex / 2}])`],
+          ["refs", `tiles[${min}..${max}]`],
+          ["TileSetFile", hex4(ts.id)],
+          ["parts", ts.parts.length],
+          ["all refs", ts.refCount],
+          ["all tiles", ts.tiles.length / 32],
+          ["unk_2", ts.unk_2],
+        ]}
+      />
     </>
   );
 };

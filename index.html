@@ -8,6 +8,12 @@
         color-scheme: light dark;
         --checker-a: light-dark(#ffffff, #3a3a3a);
         --checker-b: light-dark(#d8d8d8, #303030);
+        /* 目が疲れにくいように、ダークモードの文字は白でなく少し暗い灰色にする */
+        --text: light-dark(#333b3c, #d0d0d0);
+        --link: light-dark(#2f55c9, #8ea6e6);
+        /* 英数字と日本語で字形がそろうように、フォントを具体的に指定する (日本語は等幅でもヒラギノなどの同じゴシックで出す) */
+        --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
+        --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", monospace;
       }
       html,
       body {
@@ -15,11 +21,25 @@
         margin: 0;
       }
       body {
-        color: light-dark(#333b3c, #f6f6f6);
+        color: var(--text);
         background-color: light-dark(#efedea, #282828);
-        font-family: sans-serif;
+        font-family: var(--font-sans);
         font-size: 16px;
+        line-height: 1.6;
         overflow: hidden;
+      }
+      a {
+        color: var(--link);
+      }
+      button,
+      input,
+      select {
+        font-family: inherit;
+      }
+      /* 一覧と表は行数が多いので、本文より少しだけ詰める */
+      .sprite-list,
+      .pltt-table {
+        line-height: 1.4;
       }
       /* 画面の高さに収める: 上の1行は固定し、タブ・一覧・本文はそれぞれスクロールする */
       .app {
@@ -44,7 +64,7 @@
         text-decoration: none;
       }
       .rom-name {
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       .no-rom {
         padding: 0 12px;
@@ -102,7 +122,7 @@
         align-items: center;
       }
       .anim-refs {
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: 14px;
         margin: 0.25em 0;
         opacity: 0.8;
@@ -115,7 +135,7 @@
         white-space: nowrap;
         overflow-y: auto;
         padding-top: 8px;
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       /* 一覧の上に検索欄などがあるもの */
       .list-pane {
@@ -186,7 +206,7 @@
         display: flex;
         align-items: center;
         gap: 2px;
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       .pltt-row > span:first-child {
         width: 3em;
@@ -215,7 +235,7 @@
       }
       .pltt-table {
         border-collapse: collapse;
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       .pltt-table th,
       .pltt-table td {
@@ -235,7 +255,7 @@
         border-left-color: #4a6cff;
       }
       .bokc {
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: 16px;
         line-height: 1.5;
         tab-size: 4;
@@ -271,6 +291,17 @@
         flex: 1;
         max-width: 480px;
       }
+      /* マウスの下の情報を出す1行, 何も無いときも高さを保つ */
+      .hover-line {
+        min-height: 1.5em;
+      }
+      .info-table {
+        margin-top: 1em;
+      }
+      .info-table th {
+        white-space: nowrap;
+        vertical-align: top;
+      }
       .hover-info {
         min-height: 3em;
       }
@@ -299,7 +330,7 @@
         display: flex;
         flex-wrap: wrap;
         gap: 4px 12px;
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: 14px;
       }
       .legend-item {
@@ -312,10 +343,10 @@
         outline: 2px solid #4a6cff;
       }
       .mono {
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       .pltt-users {
-        font-family: monospace;
+        font-family: var(--font-mono);
       }
       .thumbs {
         display: flex;
@@ -344,14 +375,14 @@
         margin-top: 0.5em;
       }
       .anim-status {
-        font-family: monospace;
+        font-family: var(--font-mono);
         margin: 0.5em 0;
       }
       .anim-cmds {
         display: flex;
         flex-wrap: wrap;
         gap: 4px;
-        font-family: monospace;
+        font-family: var(--font-mono);
         font-size: 14px;
       }
       .anim-cmd {

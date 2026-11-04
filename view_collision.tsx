@@ -10,7 +10,7 @@ import { scriptHref } from "./view_script.tsx";
 import { tilemapHref } from "./view_tilemap.tsx";
 import { COLLISION_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
+import { Desc, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
 
 const collisionLabel = (id: number, withDesc = true) => {
   const name = decomp(COLLISION_NAMES)[id];
@@ -133,24 +133,6 @@ const CollisionView: FunctionComponent<{
     <div class="sprite-view">
       <h2>{collisionLabel(map.id, false)}</h2>
       <Desc text={decomp(COLLISION_NAMES)[map.id]?.[1]} />
-      <p>
-        {map.width}x{map.height} tiles, tilemapOffset: ({map.tilemapOffsetX}, {map.tilemapOffsetY}), unk_0: {map.unk_0}, zones: {map.zones.length}, paths: {map.paths.length}, navMesh: {map.navMesh ? `${map.navMesh.length} islands` : "なし"}
-      </p>
-      <p class="anim-refs">
-        {calls.length > 0
-          ? calls.map((c, i) => (
-            <span key={i}>
-              {i > 0 && ", "}
-              <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
-              {c.args.n?.[0] !== null && c.args.n?.[0] !== undefined && (
-                <>
-                  {" "}(<a href={tilemapHref(c.args.n[0])}>tilemap {hex4(c.args.n[0])}</a>)
-                </>
-              )}
-            </span>
-          ))
-          : "スクリプトから定数で読み込んでいる箇所は見つかっていません"}
-      </p>
       <div class="controls">
         {(["height", "stairs", "attr", "occluder"] as const).map((m) => (
           <label key={m}>
@@ -185,10 +167,40 @@ const CollisionView: FunctionComponent<{
           ))}
         </div>
       )}
-      <p class="mono">
+      <p class="mono hover-line">
         <HoverInfo map={map} x={hover[0]} y={hover[1]} />
       </p>
       <CollisionCanvas map={map} mode={mode} overlays={overlays} cell={BASE_CELL * scale} highlight={highlight} onHover={(x, y) => setHover([x, y])} />
+      <InfoTable
+        rows={[
+          ["size", `${map.width}x${map.height} tiles`],
+          ["tilemapOffset", `(${map.tilemapOffsetX}, ${map.tilemapOffsetY})`],
+          ["unk_0", map.unk_0],
+          ["zones", map.zones.length],
+          ["paths", map.paths.length],
+          ["navMesh", map.navMesh ? `${map.navMesh.length} islands` : "なし"],
+          [
+            "loaded by",
+            calls.length > 0
+              ? (
+                <span key="v">
+                  {calls.map((c, i) => (
+                    <span key={i}>
+                      {i > 0 && ", "}
+                      <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
+                      {c.args.n?.[0] !== null && c.args.n?.[0] !== undefined && (
+                        <>
+                          {" "}(<a href={tilemapHref(c.args.n[0])}>tilemap {hex4(c.args.n[0])}</a>)
+                        </>
+                      )}
+                    </span>
+                  ))}
+                </span>
+              )
+              : <span key="v" class="dim">スクリプトから定数で読み込んでいる箇所は見つかっていません</span>,
+          ],
+        ]}
+      />
       <ZoneTable map={map} />
       <PathTable map={map} />
     </div>
@@ -203,7 +215,7 @@ export const collisionTileText = (map: CollisionMap, x: number, y: number): stri
 };
 
 const HoverInfo: FunctionComponent<{ map: CollisionMap; x: number; y: number }> = ({ map, x, y }) => {
-  if (x < 0 || x >= map.width || y < 0 || y >= map.height) return <span>マウスを乗せるとタイルの値を表示します</span>;
+  if (x < 0 || x >= map.width || y < 0 || y >= map.height) return null;
   return <span>{collisionTileText(map, x, y)}</span>;
 };
 

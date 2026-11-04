@@ -10,7 +10,7 @@ import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
 import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+import { Desc, flagNames, hashID, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
 
 export const auxSpriteHref = (id: number) => `#aux/${hex4(id)}`;
 
@@ -60,9 +60,6 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
     <div class="sprite-view">
       <h2>{spriteLabel(gfx.id, false)}</h2>
       <Desc text={spriteDesc(gfx.id)} />
-      <p>
-        poses: {gfx.poseCount} (+{gfx.poses.length - gfx.poseCount} after this entry), size: {gfx.pw}x{gfx.ph}, offset: ({gfx.px}, {gfx.py}), plttID: {gfx.plttID}
-      </p>
       <div class="controls">
         <NumberStepper label="pose" value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} />
         <PlttControl value={plttID} defaultValue={gfx.plttID} pltt={pltt} onChange={setPlttID} />
@@ -76,12 +73,6 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
           <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
         </label>
       </div>
-      {pose && (
-        <p>
-          subsprites: {pose.subsprites.length}, tiles: {pose.tileCount} (from {pose.tileNum}), pose plttID: {pose.plttID}
-          {poseIdx >= gfx.poseCount && " (後ろのエントリのポーズ)"}
-        </p>
-      )}
       <AuxAnimPanel
         refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
         poseCount={gfx.poseCount}
@@ -99,6 +90,22 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
       <div class="pltts">
         <PaletteRow pltt={pltt} plttID={plttID} />
       </div>
+      <InfoTable
+        rows={[
+          ["poses", `${gfx.poseCount} (+${gfx.poses.length - gfx.poseCount} after this entry)`],
+          ["size", `${gfx.pw}x${gfx.ph}`],
+          ["offset", `(${gfx.px}, ${gfx.py})`],
+          ["plttID", gfx.plttID],
+          ...(pose
+            ? [
+              ["pose", `#${poseIdx}${poseIdx >= gfx.poseCount ? " (後ろのエントリのポーズ)" : ""}`],
+              ["subsprites", pose.subsprites.length],
+              ["pose tiles", `${pose.tileCount} (from ${pose.tileNum})`],
+              ["pose plttID", pose.plttID],
+            ] as [string, string | number][]
+            : []),
+        ]}
+      />
       <PoseGrid count={gfx.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
     </div>
   );

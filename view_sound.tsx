@@ -7,7 +7,7 @@ import type { ROMFile } from "./rom.ts";
 import { encodeWav, readSongHeader, readSongTable, type Rendered, renderSong, type SongEntry } from "./m4a/mod.ts";
 import { SONG_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
+import { Desc, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
 import { audioOutput, useVolume } from "./audio.ts";
 
 // gSongTable の GBA アドレス
@@ -208,16 +208,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
           <p class="dim">ループは GOTO で戻った回数です。実機のミキサーやリバーブは再現しておらず、それらしく鳴らす程度です。</p>
         </>
       )}
-      <table class="pltt-table">
-        <tbody>
-          {info.map(([k, v]) => (
-            <tr key={k}>
-              <th>{k}</th>
-              <td>{v}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      <InfoTable rows={info} />
     </div>
   );
 };

@@ -8,7 +8,7 @@ import type { ROMFile } from "./rom.ts";
 import { type MainSpriteGfx, parseMainSprite, poseToObjs } from "./sprite_main.ts";
 import { renderObjs } from "./render.ts";
 import { MAIN_ANIM_EVENT_ADVANCED, MAIN_ANIM_EVENT_ENDED, MAIN_ANIM_EVENT_WILL_END, MAIN_ANIM_FORCE_POSE, MAIN_ANIM_KEEP_FRAME, MAIN_ANIM_REVERSE, MainSpriteAnimState, PLAYMODE_LOOP, PLAYMODE_ONCE_AND_STOP, PLAYMODE_PAUSE, PLAYMODE_PLAY_ONCE_HIDE } from "./anim_main.ts";
-import { Desc, flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+import { Desc, flagNames, hashID, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
 
 export const mainSpriteHref = (id: number) => `#main/${hex4(id)}`;
 
@@ -60,9 +60,6 @@ const MainSpriteView: FunctionComponent<{ id: number; gfx: MainSpriteGfx; pltt: 
     <div class="sprite-view">
       <h2>{spriteLabel(id, false)}</h2>
       <Desc text={spriteDesc(id)} />
-      <p>
-        poses: {gfx.poses.length}, anims: {gfx.anims.length}, tiles: {gfx.tiles.length / 32}, palStart: {gfx.palStart}
-      </p>
       <div class="controls">
         <NumberStepper label="pose" value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} />
         <PlttControl value={plttID} defaultValue={gfx.palStart} pltt={pltt} onChange={setPlttID} />
@@ -73,11 +70,6 @@ const MainSpriteView: FunctionComponent<{ id: number; gfx: MainSpriteGfx; pltt: 
           <input type="checkbox" checked={xflip} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
         </label>
       </div>
-      {pose && (
-        <p>
-          subsprites: {pose.subsprites.length}, unk_0: {hex4(pose.unk_0)}, offset: ({pose.offsetX}, {pose.offsetY}), box: L{pose.box.left} T{pose.box.top} R{pose.box.right} B{pose.box.bottom}
-        </p>
-      )}
       {gfx.anims.length > 0 && (
         <MainAnimPanel
           gfx={gfx}
@@ -93,6 +85,23 @@ const MainSpriteView: FunctionComponent<{ id: number; gfx: MainSpriteGfx; pltt: 
       <div class="pltts">
         {usedPltts.map((n) => <PaletteRow key={n} pltt={pltt} plttID={plttID + n} />)}
       </div>
+      <InfoTable
+        rows={[
+          ["poses", gfx.poses.length],
+          ["anims", gfx.anims.length],
+          ["tiles", gfx.tiles.length / 32],
+          ["palStart", gfx.palStart],
+          ...(pose
+            ? [
+              ["pose", `#${poseIdx}`],
+              ["subsprites", pose.subsprites.length],
+              ["unk_0", hex4(pose.unk_0)],
+              ["offset", `(${pose.offsetX}, ${pose.offsetY})`],
+              ["box", `L${pose.box.left} T${pose.box.top} R${pose.box.right} B${pose.box.bottom}`],
+            ] as [string, string | number][]
+            : []),
+        ]}
+      />
       <PoseGrid count={gfx.poses.length} selected={poseIdx} onSelect={setPose} render={renderThumb} />
     </div>
   );
