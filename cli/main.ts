@@ -4,7 +4,7 @@
 //   deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/bokmagic.js <rom.gba> <command> ...
 // のように URL から直接動かす
 
-import { LoadROM, type ROMFile } from "../rom.ts";
+import { isSupported, LoadROM, type ROMFile } from "../rom.ts";
 import { DIR_MAIN_SPRITE } from "../fs.ts";
 import { decomp, setDecompGame } from "../decomp.ts";
 import { MAIN_SPRITE_SHEET_TILES, parseMainSprite, poseToObjs } from "../sprite_main.ts";
@@ -36,10 +36,11 @@ options:
   --xflip, --yflip       sprite, aux: 反転
   --layers <a,b,...>     tilemap: 描くレイヤ番号 (既定は全部, 番号の小さい方が奥)
   --part <n>             tilemap: タイルの読み込み元にするタイルセット部品の番号 (#n)
+  --set <n>              tilemap: --part の部品を探すタイルセットの番号 (既定 0. U3IJ はタイルセットが 11 個ある)
   --scene <n>            map: 場面の番号 (既定 0)
   --hide-bg <a,b,...>    map: 描かない BG 番号
 
-ID は 0x5D36 のような16進数. U32J rev1 では decomp の定数名 (SPRITE_SHADEMAN, TILEMAP_7DB3, Script_0x02BF など) も使える`;
+ID は 0x5D36 のような16進数. U32J (rev1, rev0) では decomp の定数名 (SPRITE_SHADEMAN, TILEMAP_7DB3, Script_0x02BF など) も使える`;
 
 class UsageError extends Error {}
 
@@ -84,7 +85,7 @@ const resolveID = (target: string | undefined, names: Record<number, [string, st
   const script = target.match(/^Script_0x([0-9a-f]+)$/i);
   if (script) return parseInt(script[1], 16);
   const found = Object.entries(decomp(names)).find(([, [name]]) => name === target);
-  if (!found) throw new UsageError(`${what} "${target}" が見つからない (定数名は U32J rev1 でだけ使える)`);
+  if (!found) throw new UsageError(`${what} "${target}" が見つからない (定数名は U32J (rev1, rev0) でだけ使える)`);
   return Number(found[0]);
 };
 
@@ -210,8 +211,12 @@ const tilemapCmd = async (rom: ROMFile, target: string | undefined, opts: Option
   const f = tilemapFiles(rom.fs).find((f) => f.id === id);
   if (!f) throw new UsageError(`タイルマップ ${hex4(id)} が無い`);
   const map = parseTilemap(rom.data, f);
-  const ts = parseTileSets(rom.data, rom.fs)[0];
-  const usedBy = mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === id)));
+  const sets = parseTileSets(rom.data, rom.fs, rom.id);
+  const set = num(opts.set, "set") ?? 0;
+  const ts = sets[set];
+  if (!ts) throw new UsageError(`タイルセット #${set} が無い (0-${sets.length - 1})`);
+  // スクリプトが読めない作品 (U3IJ) では、このタイルマップを使うマップを探さない
+  const usedBy = isSupported(rom, "script") ? mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === id))) : [];
 
   // タイルの読み込み元: --part, ファイル内のタイル, このタイルマップを使うマップの VRAM の順に探す
   let vram: Uint8Array = new Uint8Array(VRAM_TILES * 32);
@@ -219,9 +224,9 @@ const tilemapCmd = async (rom: ROMFile, target: string | undefined, opts: Option
   let pltt = num(opts.pltt, "pltt");
   const part = num(opts.part, "part");
   if (part !== undefined) {
-    if (!ts?.parts[part]) throw new UsageError(`タイルセット部品 #${part} が無い`);
+    if (!ts.parts[part]) throw new UsageError(`タイルセット部品 #${part} が無い`);
     putTiles(vram, map.loadOffset, partTiles(ts, ts.parts[part]));
-    source = `tileset part #${part} (${hex4(ts.parts[part].id)})`;
+    source = `tileset ${hex4(ts.id)} part #${part} (${hex4(ts.parts[part].id)})`;
   } else if (map.tiles) {
     putTiles(vram, map.loadOffset, map.tiles);
     source = "own tiles";
@@ -279,7 +284,7 @@ const mapCmd = async (rom: ROMFile, target: string | undefined, opts: Options) =
   const sceneIdx = num(opts.scene, "scene") ?? 0;
   const scene = e.scenes[sceneIdx];
   if (!scene) throw new UsageError(`場面 ${sceneIdx} が無い (0-${e.scenes.length - 1})`);
-  const state = buildScene(rom, scene, parseTileSets(rom.data, rom.fs)[0]);
+  const state = buildScene(rom, scene, parseTileSets(rom.data, rom.fs, rom.id)[0]);
   const hidden = list(opts["hide-bg"]) ?? [];
   const pltt = num(opts.pltt, "pltt") ?? firstPltt(rom, e);
   const shown = state.slots.filter((s) => !hidden.includes(s.bg));
@@ -306,7 +311,9 @@ const main = async () => {
   const [romPath, command, target] = positional;
   if (!romPath || !command || command === "help") throw new UsageError("");
   const rom = LoadROM(romPath.split("/").pop() ?? romPath, (await Deno.readFile(romPath)).buffer);
-  setDecompGame(rom.id); // U32J のときだけ decomp の名前を使う
+  setDecompGame(rom.id); // U32J (rev1, rev0) のときだけ decomp の名前を使う
+  const kind = command === "list" ? target : command;
+  if (kind && !isSupported(rom, kind)) throw new Error(`この ROM (${rom.id}) の ${kind} にはまだ対応していない`);
   let result: unknown;
   switch (command) {
     case "list":

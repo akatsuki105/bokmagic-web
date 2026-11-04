@@ -6,12 +6,12 @@ BG の絵は、GBA タイル (4bpp, 8x8) を BG VRAM に置き、メタタイル
 
 どちらも gFS のディレクトリから引く ([filesystem.md](filesystem.md))。番地は U32J rev1 のもの (decomp の `src/data/*.s`)。
 
-| もの         | ディレクトリID (`fs.ts`)  | decomp のシンボル                   | ファイル数                                     |
-| ------------ | ------------------------- | ----------------------------------- | ---------------------------------------------- |
-| タイルセット | `DIR_TILESET` = `0xCEEF`  | `gTilesetsDirectory` (`0x0881882C`) | 1 (ID `0x8E32`, `TilesetFile0` = `0x08818848`) |
-| タイルマップ | `DIR_TILE_MAP` = `0xC091` | `gTilemapDirectory` (`0x085B26E4`)  | 279                                            |
+| もの         | ディレクトリID (`fs.ts`)  | decomp のシンボル                   | ファイル数                                                 |
+| ------------ | ------------------------- | ----------------------------------- | ---------------------------------------------------------- |
+| タイルセット | `DIR_TILESET` = `0xCEEF`  | `gTilesetsDirectory` (`0x0881882C`) | 1 (ID `0x8E32`, `TilesetFile0` = `0x08818848`)。U3IJ は 11 |
+| タイルマップ | `DIR_TILE_MAP` = `0xC091` | `gTilemapDirectory` (`0x085B26E4`)  | 279                                                        |
 
-- タイルセットはゲーム全体で 1 ファイル (`0x8E32`) だけで、`TileSetPart` (部品) ごとにスクリプトから読み込む。U32J の値は partCount 257, tileRefCount 111526, tileCount 53062
+- U32J のタイルセットはゲーム全体で 1 ファイル (`0x8E32`) だけで、`TileSetPart` (部品) ごとにスクリプトから読み込む。U32J の値は partCount 257, tileRefCount 111526, tileCount 53062
 - タイルマップは LZ77 で圧縮されていることがある。先頭が `"MP"` なら非圧縮 (`GetTilemapFile`)
 
 ## 構造
@@ -23,12 +23,30 @@ BG の絵は、GBA タイル (4bpp, 8x8) を BG VRAM に置き、メタタイル
 | オフセット | 型  | 名前         | 意味                                                        |
 | ---------- | --- | ------------ | ----------------------------------------------------------- |
 | `0x00`     | u16 | partCount    | 部品の数                                                    |
-| `0x02`     | u16 | unk_2        | 不明 (decomp: padding?)。U32J では 1                        |
+| `0x02`     | u16 | unk          | 不明 (decomp: padding?)。U32J では 1 (コードでは `unk`)     |
 | `0x04`     | u32 | tileRefCount | refs の要素数 (コードでは `refCount`)                       |
 | `0x08`     | u32 | tileCount    | tiles の枚数                                                |
 | `0x0C`     | u32 | parts        | `TileSetPart[partCount]` へのオフセット                     |
 | `0x10`     | u32 | refs         | `u16[tileRefCount]` へのオフセット。各値は tiles の何枚目か |
 | `0x14`     | u32 | tiles        | 4bpp タイル (`32 * tileCount` バイト) へのオフセット        |
+
+### TileSetFile (U3IJ)
+
+ボクタイ1 はヘッダが 0x14 バイトで、数が u16 になる。出典は bokmagic (`lib/src/GlobalTileSetModel.cpp` の `engine == 1` の分岐)。ボクタイ1 の decomp は無い。
+
+| オフセット | 型  | 名前         | 意味                                                                       |
+| ---------- | --- | ------------ | -------------------------------------------------------------------------- |
+| `0x00`     | u16 | partCount    | 部品の数                                                                   |
+| `0x02`     | u16 | tileRefCount | refs の要素数                                                              |
+| `0x04`     | u16 | tileCount    | tiles の枚数                                                               |
+| `0x06`     | u16 | unk          | 不明。U3IJ の 11 ファイルはすべて 1 (bokmagic も書き出すときに 1 を入れる) |
+| `0x08`     | u32 | parts        | `TileSetPart[partCount]` へのオフセット                                    |
+| `0x0C`     | u32 | refs         | refs へのオフセット                                                        |
+| `0x10`     | u32 | tiles        | 4bpp タイルへのオフセット                                                  |
+
+- `TileSetPart` は U32J と同じ形
+- U3IJ の 11 ファイルすべてで、refs の最大値は `tileCount - 1` に収まる。ファイルの外のタイルを使うタイルマップ (360 個) は、どれもタイル数の同じ部品がどこかのファイルにある
+- tileRefCount は部品の tileCount の合計より大きく、`0x2500` や `0x3800` のような切りのよい値が多い。何の数かは確かめていない
 
 ### TileSetPart (8 バイト)
 
@@ -119,7 +137,7 @@ index = ((my >> 4) * (width >> 4) + (mx >> 4)) * 256 + (my & 15) * 16 + (mx & 15
 
 ## パースの手順
 
-1. `parseTileSets` (`tileset.ts`): `fs.list(DIR_TILESET)` の各ファイルのヘッダを読み、部品ごとに `refsOfs + startIndex + j * 2` から `tileCount` 個の u16 を読んで `refs` にする。`tiles` は `tilesOfs` から `tileCount * 32` バイト
+1. `parseTileSets` (`tileset.ts`): `fs.list(DIR_TILESET)` の各ファイルのヘッダを gameID に合わせて読み (U3IJ は上の 0x14 バイトの形)、部品ごとに `refsOfs + startIndex + j * 2` から `tileCount` 個の u16 を読んで `refs` にする。`tiles` は `tilesOfs` から `tileCount * 32` バイト
 2. `partTiles` (`tileset.ts`): 部品の `refs` の順に `tiles[r]` を詰めた配列を作る。`Video_LoadTileSetParts` が DMA で流す内容と同じ
 3. `parseTilemap` (`tilemap.ts`): 先頭 2 バイトが `"MP"` なら ROM をそのまま読む。そうでなければ `decompressLZ77` で展開し、先頭 4 バイトを捨てる (ゲームは展開先を `gTilemapFileBufferHead` にし、本体は 4 バイト後ろの `gTilemapFileBuffer` から始まる)。展開と LZ77 は [filesystem.md](filesystem.md)
 4. 同じく `parseTilemap`: ヘッダ、各レイヤ (`width * height` 個の mtmap)、metatiles を読む。tiles のオフセットが 0 でなければ `tileCount * 32` バイトを `tiles` に取り、0 なら `tiles` は `undefined`。`size` は metatiles と mtmap の終わりの最大値 (表示用)
@@ -130,10 +148,10 @@ index = ((my >> 4) * (width >> 4) + (mx >> 4)) * 256 + (my & 15) * 16 + (mx & 15
 ## 表示での扱い
 
 - Tileset タブ (`view_tileset.tsx`): 部品の一覧から 1 つ選び、`renderTileGrid(ts.tiles, part.refs, ...)` で VRAM に並ぶ順にタイルを出す。パレットは BG パレットから手で選ぶ ([palette.md](palette.md))。マウスの下のタイルは「読み込み先の先頭 + k → `tiles[refs[k]]`」と出す。詳細の表の startIndex は 16 進のバイトオフセットと、それを 2 で割った refs の要素番号の両方を出す
-- Tilemap タブ (`view_tilemap.tsx`): ファイル単体で分かることだけを出す。タイルの読み込み元はファイルから決まらないので手で選ぶ (ファイル内のタイル / タイルセットの部品 / なし)。既定はファイル内のタイル、無ければ tileCount が同じ部品のうち最初のもの (これは見当を付けるための既定値で、ゲームの対応関係ではない)
+- Tilemap タブ (`view_tilemap.tsx`): ファイル単体で分かることだけを出す。タイルの読み込み元はファイルから決まらないので手で選ぶ (ファイル内のタイル / タイルセットの部品 / なし)。既定はファイル内のタイル、無ければ tileCount が同じ部品のうち最初のもの (これは見当を付けるための既定値で、ゲームの対応関係ではない)。部品は全タイルセットから選べ、タイルセットが 2 つ以上ある作品 (U3IJ) では部品の前にタイルセットの ID を付ける
   - VRAM はキャラクタブロック 1 つ分 (1024 タイル) で、選んだタイルを常に `loadOffset` に置く。`'.t'` による `0x8000` への置き換えはスクリプトが決めるので、ここでは扱わない (Map タブで扱う)
   - 表示は「レイヤ」(チェックしたレイヤを番号順に重ねる, #0 が一番奥)、「メタタイル一覧」、「GBA タイル一覧」(loadOffset から tileCount 枚, パレット行を選ぶ) の 3 つ
-  - 「used by Map」は、このタイルマップを読み込む場面を持つ Map の一覧 ([map.md](map.md))
+  - 「used by Map」は、このタイルマップを読み込む場面を持つ Map の一覧 ([map.md](map.md))。スクリプトが読めない作品 (U3IJ) では探さない
 - BG に載せた組み合わせで見るのは Map タブ ([map.md](map.md))
 
 ## 根拠
@@ -152,9 +170,11 @@ index = ((my >> 4) * (width >> 4) + (mx >> 4)) * 256 + (my & 15) * 16 + (mx & 15
   - `Cmd_LoadTileMap`: `'.t'` 既定 1, `'.n'` 既定 1, `'.i'` / `'.c'` (`FUN_08000c84`) によるレイヤの並び
   - `Cmd_CreateBG`: `'.p'` の BG ごとの既定値 0/1/3/1、`BgMapScroller_Init` の `SetBGPrioDirect`
 - `src/interrupts.c`: 起動時の `Video_InitBGMode(0)`
+- bokmagic `lib/src/GlobalTileSetModel.cpp`: U3IJ のタイルセットのヘッダ
 
 ## 未解明
 
-- `TileSet.unk_2` と `TilemapLayer.unk_6` の意味
+- `TileSet.unk` と `TilemapLayer.unk_6` の意味
+- U3IJ で、どの場面がどのタイルセットのどの部品を読むか (スクリプトが読めないので分からない)
 - `'.t'` が 0 / 6 のファイル (タイルを `0x8000` に置き loadOffset を見ない) で、BgMapEntry のタイル番号が何を基準にしているか (キャラクタブロック 2 の先頭からのはずだが、ROM のデータで確かめていない)
 - `Video_SetupBGLayout` の第 2 引数 (`gBgStates[].unk_00` に入る) の意味。`Video_GenerateBGMapCore` はこれが 1 か 2 かで分岐し、2 のときはマップの外を 0 以外のエントリで埋めるように見える (推測, 詳しくは読んでいない)。`Cmd_LoadTileMap` は 0 を渡すが、`BgMapScroller_Init` が `Cmd_CreateBG` の `'.f'` の bit4 (`BGSCROLL_UNK_4`) で上書きする。ツールはこれを見ていない

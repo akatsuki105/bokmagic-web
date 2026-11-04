@@ -46,7 +46,7 @@ const sceneLabels = (scenes: MapScene[]) =>
 
 export const MapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const entries = mapEntries(rom);
-  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs), [rom]);
+  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs, rom.id), [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const byRoot = (id: number | undefined) => entries.find((e) => e.root === id);
   const [selected, setSelected] = useState<MapEntry | undefined>(byRoot(hashID("map")) ?? entries[0]);

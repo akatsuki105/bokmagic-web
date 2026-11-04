@@ -2,8 +2,16 @@ import * as gba from "./gba.ts";
 import { FileSystem } from "./fs.ts";
 import { loadObjPltt, type ObjPltt } from "./objpltt.ts";
 
-const GAME_IDS = ["U32J_rev1", "U33J"] as const;
-type gameid = typeof GAME_IDS[number];
+const GAME_IDS = ["U3IJ", "U32J", "U32J_rev1", "U33J"] as const; // U3IJ はボクタイ1 (I は英字)
+export type gameid = typeof GAME_IDS[number];
+
+// 作品ごとに、形式が違ってまだ読めないアセット (画面のタブ名・コマンドラインの種類名)
+// U3IJ は当たり判定・スクリプトの形式が違う (bokmagic の engine == 1 の分岐). マップの画面はスクリプトを読むので一緒に止める
+const UNSUPPORTED: Partial<Record<gameid, readonly string[]>> = {
+  U3IJ: ["collision", "script", "map"],
+};
+
+export const isSupported = (rom: ROMFile, kind: string): boolean => !UNSUPPORTED[rom.id]?.includes(kind);
 
 // check function to ensure gameID satisfies the type gameid
 const isSupportedGameID = (id: string): id is gameid => {

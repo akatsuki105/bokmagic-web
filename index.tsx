@@ -1,6 +1,6 @@
 import { FunctionComponent, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { LoadROM, type ROMFile } from "./rom.ts";
+import { isSupported, LoadROM, type ROMFile } from "./rom.ts";
 import { setDecompGame } from "./decomp.ts";
 import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
@@ -189,21 +189,22 @@ const App = () => {
       {rom && (
         <div class="app-body">
           <nav class="tabs">
-            {TABS.map(([id, label]) => <a key={id} href={`#${id}`} class={id === tab ? "tab selected" : "tab"}>{label}</a>)}
+            {TABS.map(([id, label]) => <a key={id} href={`#${id}`} class={`tab${id === tab ? " selected" : ""}${isSupported(rom, id) ? "" : " dim"}`}>{label}</a>)}
           </nav>
           <div key={romSerial} class="tab-body">
-            {tab === "main" && <MainSpriteViewer rom={rom} />}
-            {tab === "aux" && <AuxSpriteViewer rom={rom} />}
-            {tab === "particle" && <ParticleViewer rom={rom} />}
-            {tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
-            {tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
-            {tab === "tileset" && <TilesetViewer rom={rom} />}
-            {tab === "map" && <MapViewer rom={rom} />}
-            {tab === "tilemap" && <TilemapViewer rom={rom} />}
-            {tab === "collision" && <CollisionViewer rom={rom} />}
-            {tab === "font" && <FontViewer rom={rom} />}
-            {tab === "script" && <ScriptViewer rom={rom} />}
-            {tab === "sound" && <SoundViewer rom={rom} />}
+            {!isSupported(rom, tab) && <p>この ROM ({rom.id}) の {TABS.find(([id]) => id === tab)?.[1]} にはまだ対応していません</p>}
+            {isSupported(rom, tab) && tab === "main" && <MainSpriteViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "aux" && <AuxSpriteViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "particle" && <ParticleViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "objpltt" && <ObjPaletteViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "bgpltt" && <BgPaletteViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "tileset" && <TilesetViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "map" && <MapViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "tilemap" && <TilemapViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "collision" && <CollisionViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "font" && <FontViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "script" && <ScriptViewer rom={rom} />}
+            {isSupported(rom, tab) && tab === "sound" && <SoundViewer rom={rom} />}
           </div>
         </div>
       )}

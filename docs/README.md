@@ -14,7 +14,7 @@
 ```
 ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した前回の ROM)
   └ index.tsx: LoadROM (rom.ts) で ROMFile を作る
-       ├ gba.ts: ゲームID の確認 (U32J_rev1 / U33J)
+       ├ gba.ts: ゲームID の確認 (U3IJ / U32J / U32J_rev1 / U33J)
        ├ fs.ts: gFS (ゲーム内のファイルシステム) を読む → ファイルID からオフセットを引ける
        └ objpltt.ts: OBJ パレット (gObjPlttData) を先に読んでおく
   └ 各タブ (view_*.tsx) が、必要なフォーマットのパーサ (*.ts) を呼んで表示する
@@ -62,7 +62,7 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 ```
 
 - decomp のコメントを変えたら、これを実行してからバンドルし直すと画面に出る
-- 名前は U32J から作ったものなので、`decomp.ts` の `decomp()` は U32J 以外では空の表を返す (U33J では名前を出さない)
+- 名前は U32J から作ったものなので、`decomp.ts` の `decomp()` は U32J (rev1, rev0) 以外では空の表を返す (U3IJ, U33J では名前を出さない)。rev0 はファイルID などが rev1 と同じなので同じ表を使う
 - 見出しの下の説明 (`Desc`) は、定数のコメントの全文。Map タブの一覧に出すステージの短い名前は、コメントの「 (」か「, 」より前
 
 ## 画面の約束事

@@ -9,7 +9,7 @@ import { renderTileGrid } from "./render.ts";
 import { type BgPlttChoice, bgPlttColors, BgPlttSelect, hex4, InfoTable, NumberStepper, SpriteCanvas } from "./components.tsx";
 
 export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
-  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs), [rom]);
+  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs, rom.id), [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const [fileIdx, setFileIdx] = useState(0);
   const [partIdx, setPartIdx] = useState(0);
@@ -99,7 +99,7 @@ const PartView: FunctionComponent<{ ts: TileSet; partIdx: number; colors: Uint32
           ["parts", ts.parts.length],
           ["all refs", ts.refCount],
           ["all tiles", ts.tiles.length / 32],
-          ["unk_2", ts.unk_2],
+          ["unk", ts.unk],
         ]}
       />
     </>

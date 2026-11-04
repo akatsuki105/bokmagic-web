@@ -28,6 +28,8 @@ const DIR_REMAP: Record<number, [number, number]> = {
 
 // gFS (FSEntry[12]) の ROM オフセット
 const FS_OFFSET: Record<string, number> = {
+  "U3IJ": 0x5A1584, // bokmagic (lib/src/Importer.cpp) の mftAddress, 中身の並びは U32J と同じ
+  "U32J": 0x5B0CE4, // rev0. bokmagic の mftAddress, decomp の tools/encoding/mft/helper.ts も同じ値
   "U32J_rev1": 0x5B0D90,
   "U33J": 0x614D6C, // bokmagic (lib/src/Importer.cpp) の mftAddress
 };
@@ -67,7 +69,7 @@ export class FileSystem {
   }
 
   // gFS のエントリのうち、ID の上位16ビットが dirID のものが指す先 (ROM オフセット) をそのまま返す
-  // gScriptDirectory のように Directory の形をしていないもの用, 下位16ビットは作品ごとに違う (U32J: 0xA41E, U33J: 0x49BC)
+  // gScriptDirectory のように Directory の形をしていないもの用, 下位16ビットは作品ごとに違う (U3IJ: 0x41F5, U32J: 0xA41E, U33J: 0x49BC)
   rawEntry(dirID: number): number | undefined {
     for (const [id, offset] of this.dirs) if (id >>> 16 === dirID) return offset;
     return undefined;

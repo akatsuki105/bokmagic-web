@@ -11,7 +11,7 @@ import { SCRIPT_NAMES, STRING_NAMES } from "./generated/names.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
 import { Desc, hashID, hex4, InfoTable, useHashID } from "./components.tsx";
 
-// 名前表は U32J rev1 のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
+// 名前表は U32J (rev1, rev0) のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
 const printContext = (): PrintContext => ({
   scriptNames: new Map(Object.entries(decomp(SCRIPT_NAMES)).map(([id, [name]]) => [Number(id), name])),
   stringNames: new Map(Object.entries(decomp(STRING_NAMES)).map(([id, [name]]) => [Number(id), name])),

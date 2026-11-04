@@ -6,7 +6,7 @@
 
 - 曲テーブル gSongTable は U32J rev1 で `0x0825E56C` (decomp の `src/data/songs.s`)。8 バイト × 1000 曲で、直後の `0x082604AC` に dummy_song_header がある。
 - 曲ヘッダ, 音色 (voicegroup), 波形, シーケンスは `0x0852EFB8` (gSongHeaders) から後ろにある。
-- gFS は使わず、曲テーブルの位置は `detectEngine` (`m4a/detect.ts`) で ROM から探す。U32J rev1 では `0x0825E56C`、U33J では `0x0826456C` が見つかる。
+- gFS は使わず、曲テーブルの位置は `detectEngine` (`m4a/detect.ts`) で ROM から探す。U3IJ では `0x081EB96C`、U32J rev1 では `0x0825E56C` (rev0 では `0x0825E4C0`)、U33J では `0x0826456C` が見つかる。
 
 ## 構造
 
@@ -174,7 +174,7 @@
 ## 表示での扱い
 
 - Sound タブ (`view_sound.tsx`): ROM を開くと `detectEngine` で曲テーブルと `m4aSoundMode` の値を探し、ミキサーの周波数・同時発音数・リバーブの既定値を書き出しに渡す。見つからなければ「m4a のサウンドドライバが見つかりませんでした」と出す。
-- 左に曲の一覧を出す。名前は `generated/names.ts` の SONG_NAMES (decomp の `include/constants/songs.h` から作る, U32J rev1 のときだけ)。トラックが 0 の曲は薄く出す。選んでいる曲は URL の `#sound/0xXXXX` (曲番号) に入れる。
+- 左に曲の一覧を出す。名前は `generated/names.ts` の SONG_NAMES (decomp の `include/constants/songs.h` から作る, U32J rev1 と rev0 のときだけ)。トラックが 0 の曲は薄く出す。選んでいる曲は URL の `#sound/0xXXXX` (曲番号) に入れる。
 - 右に header, tracks, voicegroup, priority, reverb (bit7 が立っていなければ ROM の既定値), player (ms) を出す。
 - 「再生」を押したときに初めて `renderSong` で曲全体を PCM にし (同期処理)、`AudioBufferSourceNode` で鳴らす。一時停止、停止、シークバー (位置を変えると、その位置から鳴らし直す)、WAV で保存がある。
 - 「ループ」(1-9) は renderSong の loops で、変えると書き出し直す。「繰り返し再生」は書き出した PCM を最後まで鳴らしたら頭から鳴らし直すもの (`AudioBufferSourceNode.loop`) で、曲データのループとは別。曲を切り替えても保つ。

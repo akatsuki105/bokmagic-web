@@ -4,7 +4,7 @@
 
 import { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
-import type { ROMFile } from "./rom.ts";
+import { isSupported, type ROMFile } from "./rom.ts";
 import { type FileEntry } from "./fs.ts";
 import { mtmapIndex, parseTilemap, putTiles, renderLayers, renderMetatiles, type Tilemap, tilemapFiles, VRAM_TILES } from "./tilemap.ts";
 import { parseTileSets, partTiles, type TileSet } from "./tileset.ts";
@@ -25,14 +25,15 @@ export const tilemapLabel = (id: number, withDesc = true) => {
 };
 
 // タイルの読み込み元
-// own: ファイル内のタイル, part: 手で選んだタイルセット部品
-type TileSource = { kind: "own" } | { kind: "part"; part: number } | { kind: "none" };
+// own: ファイル内のタイル, part: 手で選んだタイルセット部品 (set はタイルセットの何個目か. U32J は 1 個だけ, U3IJ は 11 個)
+type TileSource = { kind: "own" } | { kind: "part"; set: number; part: number } | { kind: "none" };
 
 // VRAM のキャラクタブロック1つ分を組み立てる, どちらも loadOffset に置く
-const buildVram = (map: Tilemap, src: TileSource, ts: TileSet | undefined): Uint8Array => {
+const buildVram = (map: Tilemap, src: TileSource, sets: TileSet[]): Uint8Array => {
   const vram = new Uint8Array(VRAM_TILES * 32);
-  if (ts && src.kind === "part") {
-    const part = ts.parts[src.part];
+  if (src.kind === "part") {
+    const ts = sets[src.set];
+    const part = ts?.parts[src.part];
     if (part) putTiles(vram, map.loadOffset, partTiles(ts, part));
   }
   if (src.kind === "own" && map.tiles) putTiles(vram, map.loadOffset, map.tiles);
@@ -41,7 +42,7 @@ const buildVram = (map: Tilemap, src: TileSource, ts: TileSet | undefined): Uint
 
 export const TilemapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => tilemapFiles(rom.fs), [rom]);
-  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs), [rom]);
+  const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs, rom.id), [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const byID = (id: number | undefined) => files.find((f) => f.id === id);
   const [selected, setSelected] = useState<FileEntry>(byID(hashID("tilemap")) ?? files[0]);
@@ -59,18 +60,26 @@ export const TilemapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           </li>
         ))}
       </ul>
-      <TilemapView key={selected.id} rom={rom} entry={selected} ts={tilesets[0]} bgFiles={bgFiles} />
+      <TilemapView key={selected.id} rom={rom} entry={selected} sets={tilesets} bgFiles={bgFiles} />
     </div>
   );
 };
 
-const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileSet | undefined; bgFiles: BgPlttFile[] }> = ({ rom, entry, ts, bgFiles }) => {
+// 部品の選択肢: 全タイルセットの部品を [タイルセットの何個目, 部品の何個目] で並べる
+type PartRef = { set: number; part: number };
+const partValue = (r: PartRef) => `p${r.set}.${r.part}`;
+
+const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; sets: TileSet[]; bgFiles: BgPlttFile[] }> = ({ rom, entry, sets, bgFiles }) => {
   const map = useMemo(() => parseTilemap(rom.data, entry), [rom, entry]);
-  // このタイルマップを読み込む Map
-  const maps = useMemo(() => mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === map.id))).map((e) => e.root), [rom, map]);
+  // このタイルマップを読み込む Map (スクリプトが読めない作品では探さない)
+  const scripted = isSupported(rom, "script");
+  const maps = useMemo(() => scripted ? mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === map.id))).map((e) => e.root) : [], [rom, map]);
+  const allParts = useMemo(() => sets.flatMap((ts, set) => ts.parts.map((_, part) => ({ set, part }))), [sets]);
+  const partOf = (r: PartRef) => sets[r.set].parts[r.part];
+  const partLabel = (r: PartRef) => (sets.length > 1 ? `${hex4(sets[r.set].id)} ` : "") + `#${r.part} ${hex4(partOf(r).id)}`;
   // 既定の読み込み元: ファイル内のタイル, 無ければ tileCount が同じ部品
-  const sameCount = useMemo(() => ts?.parts.map((p, i) => [p, i] as const).filter(([p]) => p.tileCount === map.tileCount).map(([, i]) => i) ?? [], [ts, map]);
-  const [src, setSrc] = useState<TileSource>(map.tiles ? { kind: "own" } : sameCount[0] !== undefined ? { kind: "part", part: sameCount[0] } : { kind: "none" });
+  const sameCount = useMemo(() => allParts.filter((r) => partOf(r).tileCount === map.tileCount), [allParts, map]);
+  const [src, setSrc] = useState<TileSource>(map.tiles ? { kind: "own" } : sameCount[0] ? { kind: "part", ...sameCount[0] } : { kind: "none" });
   const [pltt, setPltt] = useState<BgPlttChoice>({ file: null, row: 0 });
   const [visible, setVisible] = useState<boolean[]>(() => map.layers.map(() => true));
   // 奥から手前の順: レイヤ番号順 (#0 が一番奥)
@@ -82,7 +91,7 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
   const [tileRow, setTileRow] = useState(0);
   const [hover, setHover] = useState<[number, number]>([-1, -1]);
 
-  const vram = useMemo(() => buildVram(map, src, ts), [map, src, ts]);
+  const vram = useMemo(() => buildVram(map, src, sets), [map, src, sets]);
   const colors = useMemo(() => bgFiles.find((f) => f.id === pltt.file)?.colors ?? Uint32Array.from({ length: 256 }, (_, i) => GRAYSCALE_PLTT[i & 15]), [bgFiles, pltt]);
   const rendered = useMemo(() => {
     if (view === "metatiles") return renderMetatiles(map, vram, colors, transparent0);
@@ -103,19 +112,20 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
         <label>
           tiles{" "}
           <select
-            value={src.kind === "part" ? `p${src.part}` : src.kind}
+            value={src.kind === "part" ? partValue(src) : src.kind}
             onChange={(e) => {
               const v = e.currentTarget.value;
-              setSrc(v === "own" || v === "none" ? { kind: v } : { kind: "part", part: Number(v.slice(1)) });
+              const [set, part] = v.slice(1).split(".").map(Number);
+              setSrc(v === "own" || v === "none" ? { kind: v } : { kind: "part", set, part });
             }}
           >
             {map.tiles && <option value="own">ファイル内のタイル</option>}
             <option value="none">(なし)</option>
             <optgroup label={`タイルセット部品 (tileCount ${map.tileCount} のもの)`}>
-              {sameCount.map((i) => <option key={i} value={`p${i}`}>{`#${i} ${hex4(ts!.parts[i].id)}`}</option>)}
+              {sameCount.map((r) => <option key={partValue(r)} value={partValue(r)}>{partLabel(r)}</option>)}
             </optgroup>
             <optgroup label="タイルセット部品 (その他)">
-              {ts?.parts.map((p, i) => (sameCount.includes(i) ? null : <option key={i} value={`p${i}`}>{`#${i} ${hex4(p.id)} (${p.tileCount})`}</option>))}
+              {allParts.map((r) => (sameCount.includes(r) ? null : <option key={partValue(r)} value={partValue(r)}>{`${partLabel(r)} (${partOf(r).tileCount})`}</option>))}
             </optgroup>
           </select>
         </label>
@@ -173,7 +183,7 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
           ["loadOffset", map.loadOffset],
           [
             "used by Map",
-            maps.length === 0 ? <span key="v" class="dim">(スクリプトから見つかっていません)</span> : (
+            maps.length === 0 ? <span key="v" class="dim">{scripted ? "(スクリプトから見つかっていません)" : "(この ROM のスクリプトは読めないので探していません)"}</span> : (
               <span key="v">
                 {maps.map((root) => (
                   <a key={root} href={mapHref(root)} class="load-link">

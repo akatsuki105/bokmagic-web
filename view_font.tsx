@@ -13,6 +13,14 @@ import { bgpLabel, Desc, hex4, InfoTable, NumberStepper, SpriteCanvas, Swatches 
 const FONT_PLTTS = [0x529C, 0x539C];
 const FONT_PLTT_ROW = 15; // Font_DrawHankakuChar / Font_DrawZenkakuChar はマップに常に 15 本目を書く
 
+// FONT_PLTTS が無い作品 (U3IJ) で使う色. 字形のドットは 1-4 (4 が地) なので、1 を黒・4 を白にした灰色にする (style で 4 を足した色も同じ明るさ)
+const FALLBACK_LEVELS = [0x20, 0x60, 0xA0, 0xF0];
+const FALLBACK_PLTT = Uint32Array.from({ length: 16 }, (_, i) => {
+  if (i === 0) return 0;
+  const v = FALLBACK_LEVELS[(i - 1) & 3];
+  return ((0xFF << 24) | (v << 16) | (v << 8) | v) >>> 0;
+});
+
 // 字形番号を文字コードに戻す (半角: + 0x20, 全角: (0x80 | 上位) と 下位の2バイト)
 // U32J の text_renderer.c から読んだ変換なので、ほかの作品 (文字コードが違う) では使わない
 const codeOf = (kind: GlyphKind, g: number) => (kind === "hankaku" ? (g + 0x20).toString(16).toUpperCase().padStart(2, "0") : `${((g >> 8) | 0x80).toString(16).toUpperCase()} ${(g & 0xFF).toString(16).toUpperCase().padStart(2, "0")}`);
@@ -20,12 +28,13 @@ const codeOf = (kind: GlyphKind, g: number) => (kind === "hankaku" ? (g + 0x20).
 export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   // ゲームが使うフォントファイル (FONT_FILE) を ID で引く, 無ければディレクトリの先頭
   const font = useMemo(() => {
-    const fonts = parseFonts(rom.data, rom.fs);
+    const fonts = parseFonts(rom.data, rom.fs, rom.id);
     return fonts.find((f) => f.id === FONT_FILE) ?? fonts[0];
   }, [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const [kind, setKind] = useState<GlyphKind>("zenkaku");
-  const [plttFile, setPlttFile] = useState(FONT_PLTTS[0]);
+  const plttFiles = useMemo(() => FONT_PLTTS.filter((id) => bgFiles.some((f) => f.id === id)), [bgFiles]);
+  const [plttFile, setPlttFile] = useState(plttFiles[0]);
   const [row, setRow] = useState(FONT_PLTT_ROW);
   const [style, setStyle] = useState(0);
   const [cols, setCols] = useState(16);
@@ -35,10 +44,10 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
 
   const colors = useMemo(() => {
     const f = bgFiles.find((f) => f.id === plttFile);
-    return f ? f.colors.subarray(row * 16, row * 16 + 16) : new Uint32Array(16);
+    return f ? f.colors.subarray(row * 16, row * 16 + 16) : FALLBACK_PLTT;
   }, [bgFiles, plttFile, row]);
   const rendered = useMemo(() => renderGlyphs(font, kind, cols, colors, style), [font, kind, cols, colors, style]);
-  const [gw, gh] = glyphSize(kind);
+  const [gw, gh] = glyphSize(font, kind);
   const count = kind === "hankaku" ? font.hankakuCount : font.zenkakuCount;
   const chars = decomp(kind === "hankaku" ? HANKAKU_CHARS : ZENKAKU_CHARS);
 
@@ -55,12 +64,12 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         <h2>{kind === "hankaku" ? "半角" : "全角"}</h2>
         <Desc text={`${kind === "hankaku" ? "半角" : "全角"}の字形 (${gw}x${gh}) を番号順に並べています。style は Font_AcquireGlyph と同じく、各ドットに style << 2 を OR します`} />
         <div class="controls">
-          {FONT_PLTTS.map((id, i) => (
+          {plttFiles.map((id) => (
             <label key={id}>
-              <input type="radio" name="font-pltt" checked={plttFile === id} onChange={() => setPlttFile(id)} /> {bgpLabel(id, false)} (Font_SetPltt({i}))
+              <input type="radio" name="font-pltt" checked={plttFile === id} onChange={() => setPlttFile(id)} /> {bgpLabel(id, false)} (Font_SetPltt({FONT_PLTTS.indexOf(id)}))
             </label>
           ))}
-          <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} />
+          {plttFiles.length > 0 ? <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} /> : <span>この ROM にはフォント用の BG パレット ({FONT_PLTTS.map((id) => hex4(id)).join(", ")}) が無いので、灰色で描きます</span>}
           <Swatches colors={colors} start={0} />
         </div>
         <div class="controls">
@@ -85,11 +94,11 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         <InfoTable
           rows={[
             ["file", hex4(font.id)],
-            ["glyph size", `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
+            ["glyph size", gw === 12 ? "12x12 (タイルに分けない, 72 bytes)" : `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
             ["glyphs", count],
             ["hankaku", font.hankakuCount],
             ["zenkaku", font.zenkakuCount],
-            ["palette", `${bgpLabel(plttFile, false)} row ${row}`],
+            ["palette", plttFile === undefined ? "灰色 (ROM に無い)" : `${bgpLabel(plttFile, false)} row ${row}`],
           ]}
         />
       </div>

@@ -48,10 +48,11 @@ deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/b
 | `--xflip`, `--yflip`     | sprite, aux  | 反転                                                                                                 |
 | `--layers <a,b,...>`     | tilemap      | 描くレイヤ (既定は全部, 番号の小さい方が奥)                                                          |
 | `--part <n>`             | tilemap      | タイルの読み込み元にするタイルセット部品の番号 (`#n`)                                                |
+| `--set <n>`              | tilemap      | `--part` の部品を探すタイルセットの番号 (既定 0。U3IJ はタイルセットが 11 個ある)                    |
 | `--scene <n>`            | map          | 場面の番号 (既定 0)                                                                                  |
 | `--hide-bg <a,b,...>`    | map          | 描かない BG 番号                                                                                     |
 
-ID は `0x5D36` のような 16 進数で書く。U32J rev1 では decomp の定数名 (`SPRITE_SHADEMAN`, `TILEMAP_7DB3`, `Script_0x02BF` など) も使える (`generated/names.ts` をバンドルに含めている)。U33J では名前は出ず、ID だけ使える。
+ID は `0x5D36` のような 16 進数で書く。U32J (rev1, rev0) では decomp の定数名 (`SPRITE_SHADEMAN`, `TILEMAP_7DB3`, `Script_0x02BF` など) も使える (`generated/names.ts` をバンドルに含めている)。U33J と U3IJ では名前は出ず、ID だけ使える。U3IJ (ボクタイ1) では `list map`、`map` は使えない (スクリプトが読めない)。`tilemap` は使えるが、このタイルマップを使うマップは探さないので、タイルは `--set` と `--part` で選ぶ
 
 ### 例
 

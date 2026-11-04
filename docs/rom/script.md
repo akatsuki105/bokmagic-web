@@ -4,7 +4,7 @@
 
 ## ROM 上の位置
 
-- [gFS](filesystem.md) のエントリのうち、ID の上位16ビットが `0xA8D9` (`DIR_SCRIPT`) のものが gScriptDirectory を指す。下位16ビットは作品ごとに違う (U32J: `0xA41E`, U33J: `0x49BC`)。
+- [gFS](filesystem.md) のエントリのうち、ID の上位16ビットが `0xA8D9` (`DIR_SCRIPT`) のものが gScriptDirectory を指す。下位16ビットは作品ごとに違う (U3IJ: `0x41F5`, U32J: `0xA41E`, U33J: `0x49BC`)。U3IJ は表の形が違う (bokmagic によると「ID と位置」の組の並び) ので、まだ読まない。
 - gScriptDirectory は普通の Directory (ファイル数, ID 表, オフセット表) の形をしていないので、`FileSystem.list` / `get` ではなく `FileSystem.rawEntry(0xA8D9)` で、上位16ビットだけを比べて指す先の ROM オフセットをそのまま取る。
 - U32J rev1 では `0x08CBF248` (decomp の `include/vm.h` のコメント)。
 
@@ -163,7 +163,7 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 - Script タブ (`view_script.tsx`): 左にスクリプトの一覧 (ID か名前で絞り込み)、右に .bokc、ID, ROM アドレス (`offset + 0x08000000`), variables (`varCount`), called by (`scriptCallers`), 同じ offset を指す別のID (「同じ実体」, 開いたときだけリンクを作る) を出す。
 - 選んでいるスクリプトは URL の `#script/0xXXXX` に入れる (`scriptHref`)。Map タブと Collision タブはここへリンクする。
 - .bokc の中の `Script_...` の名前はリンクにする。
-- スクリプト名と文字列名 (`generated/names.ts` の SCRIPT_NAMES, STRING_NAMES, decomp の `include/constants/script.h` と `strings.h` から作る) は U32J rev1 のときだけ使う (`decomp.ts`)。それ以外の ROM では `Script_0xXXXX` のような番号の名前になる (`bokcc/instruction.ts` の `scriptName`)。
+- スクリプト名と文字列名 (`generated/names.ts` の SCRIPT_NAMES, STRING_NAMES, decomp の `include/constants/script.h` と `strings.h` から作る) は U32J rev1 と rev0 のときだけ使う (`decomp.ts`)。それ以外の ROM では `Script_0xXXXX` のような番号の名前になる (`bokcc/instruction.ts` の `scriptName`)。
 
 ## 根拠
 

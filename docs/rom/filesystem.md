@@ -9,12 +9,15 @@ ROM のアセットは、gFS というディレクトリの表から (ディレ�
 
 | gameID      | `FS_OFFSET` | 出典                                                                                                                                      |
 | ----------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `U3IJ`      | `0x5A1584`  | bokmagic の `mftAddress` (`fs.ts` のコメント)。ボクタイ1 の decomp は無い                                                                 |
+| `U32J`      | `0x5B0CE4`  | rev0。bokmagic の `mftAddress` と decomp の `tools/encoding/mft/helper.ts` (`0x085B0CE4`)                                                 |
 | `U32J_rev1` | `0x5B0D90`  | decomp `src/file.c` の `gFS` (`0x085B0D90`)                                                                                               |
 | `U33J`      | `0x614D6C`  | bokmagic の `mftAddress` (`fs.ts` のコメント)。decomp の `tools/encoding/mft/helper.ts` の表も `0x08614D6C`。C のコードでは確かめていない |
 
 - ROM 内のポインタは GBA のアドレス (ROM は `0x08000000` から) なので、`ROM_BASE` (`0x08000000`) を引いて ROM 先頭からのオフセットにする
 - Directory の中のオフセットは、すべて Directory の先頭からの相対値
-- decomp の `tools/encoding/mft/helper.ts` には U32J (rev0) の gFS (`0x085B0CE4`) もあるが、このツールは U32J rev0 に対応していない (`rom.ts` の `GAME_IDS`)
+- ボクタイ1 のゲームコードは `U3IJ` (I は英字)。gFS の並びとディレクトリIDは U32J と同じ。フォントとタイルセットは形が違い、gameID で読み分ける ([font.md](font.md), [bg.md](bg.md))。Collision Map とスクリプトも形式が違って今のパーサでは読めないので、その画面とコマンドは `rom.ts` の `isSupported` で止め、「まだ対応していない」と出す (マップの画面はスクリプトを読むので一緒に止める)
+- U32J rev0 (gameID は `U32J`) は gFS の位置が違うだけで、全ディレクトリのファイルID とファイルの先頭 64 バイト、スクリプト 11539 本の先頭 16 バイトが rev1 と同じだった。そのため `generated/` の名前の表 (rev1 の decomp から作る) を rev0 でも使う (`decomp.ts`)。曲テーブルも 1000 曲の並びが同じ
 
 ## 構造
 
@@ -100,12 +103,12 @@ GBA BIOS の `LZ77UnCompWram` と同じ形式。
 
 ## パースの手順
 
-1. `LoadROM` (`rom.ts`) が ROM 全体を `DataView` にし、`getGameID` (`gba.ts`) で gameID を作る。`GAME_IDS` (`U32J_rev1`, `U33J`) に無ければ例外を投げる
+1. `LoadROM` (`rom.ts`) が ROM 全体を `DataView` にし、`getGameID` (`gba.ts`) で gameID を作る。`GAME_IDS` (`U3IJ`, `U32J`, `U32J_rev1`, `U33J`) に無ければ例外を投げる
 2. `new FileSystem(dv, gameID)` (`fs.ts`) が `FS_OFFSET[gameID]` から 8 バイトずつ読み、`id` が 0 のエントリで止める。`id` → `directory - 0x08000000` を `dirs` (Map) に入れる。ゲームは `GetDirectory` で二分探索するが、ここでは Map で引く
 3. `list(dirID)` は `directory(dirID)` で Directory の位置を求める。`DIR_REMAP[dirID]` で gFS の `id` (`(上位 << 16) | 下位`) を作り、`dirs` から引く。`DIR_REMAP` に無い ID や gFS に無い ID は例外
 4. `list` は Directory の `entryCount`, `offsetToIds`, `offsetToOffsets` を読み、`i` 番目のファイルを `{ id: ids[i], offset: d + offsets[i] }` (`d` は Directory の ROM オフセット) にして、ID 昇順のまま返す。`GetFileFromDirectory` の `h.offsets[idx] + d` と同じ計算
 5. `get(dirID, fileID)` は `list` の中から `fileID` を線形に探し、無ければ `undefined` を返す。ゲームの `FindFile` は二分探索だが、`ids` が昇順なので見つかるものは同じ
-6. `rawEntry(dirID)` は gFS を ID の上位 16 ビットだけで探し、指す先の ROM オフセットをそのまま返す (Directory として読まない)。`gScriptDirectory` 用 (`parseScriptDirectory` in `script.ts`)。下位 16 ビットは作品ごとに違うので照合しない (`fs.ts` のコメントでは U32J: `0xA41E`, U33J: `0x49BC`)
+6. `rawEntry(dirID)` は gFS を ID の上位 16 ビットだけで探し、指す先の ROM オフセットをそのまま返す (Directory として読まない)。`gScriptDirectory` 用 (`parseScriptDirectory` in `script.ts`)。下位 16 ビットは作品ごとに違うので照合しない (`fs.ts` のコメントでは U3IJ: `0x41F5`, U32J: `0xA41E`, U33J: `0x49BC`)
 7. `LoadROM` は続けて `loadObjPltt` (`objpltt.ts`) を呼び、OBJ パレットを先に読んでおく ([palette.md](palette.md))
 
 ### LZ77 の展開
@@ -148,4 +151,5 @@ GBA BIOS の `LZ77UnCompWram` と同じ形式。
 
 - 展開後の先頭 4 バイト: ゲームは読まない。値は「`0x00` + 展開後のサイズ」で、圧縮前のデータに付いていた非圧縮 (type 0) のヘッダの名残に見えるが、推測
 - gFS の `id` の上位・下位 16 ビットが何の文字列のハッシュかは、decomp でも「?」付きの推測にとどまる (`GetFile` のコメント)。パースには関係しない
+- U3IJ の `FS_OFFSET` (`0x5A1584`) は bokmagic の値で、ROM の中に gFS の形の表があることは確かめた (各ディレクトリの中身は U32J と同じ形で読める)
 - U33J の `FS_OFFSET` (`0x614D6C`) と、U33J の `gScriptDirectory` の下位 16 ビット (`0x49BC`) は、U33J の decomp が無いので C のコードでは確かめていない
