@@ -103,98 +103,104 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; sets: Til
   }, [map, drawOrder.join(","), vram, colors, transparent0, view, tileRow]);
 
   return (
-    <div class="sprite-view">
+    <div class="sprite-view split-view">
       <h2>{tilemapLabel(map.id, false)}</h2>
-      <Desc text={decomp(TILEMAP_NAMES)[map.id]?.[1]} />
+      <div class="split">
+        <div class="split-canvas">
+          <SpriteCanvas rendered={rendered} scale={scale} grid={grid ? (view === "tiles" ? 8 : 16) : undefined} onHover={(x, y) => setHover([x, y])} />
+        </div>
+        <div class="split-side">
+          <Desc text={decomp(TILEMAP_NAMES)[map.id]?.[1]} />
 
-      <h3>読み込み元</h3>
-      <div class="controls">
-        <label>
-          tiles{" "}
-          <select
-            value={src.kind === "part" ? partValue(src) : src.kind}
-            onChange={(e) => {
-              const v = e.currentTarget.value;
-              const [set, part] = v.slice(1).split(".").map(Number);
-              setSrc(v === "own" || v === "none" ? { kind: v } : { kind: "part", set, part });
-            }}
-          >
-            {map.tiles && <option value="own">ファイル内のタイル</option>}
-            <option value="none">(なし)</option>
-            <optgroup label={`タイルセット部品 (tileCount ${map.tileCount} のもの)`}>
-              {sameCount.map((r) => <option key={partValue(r)} value={partValue(r)}>{partLabel(r)}</option>)}
-            </optgroup>
-            <optgroup label="タイルセット部品 (その他)">
-              {allParts.map((r) => (sameCount.includes(r) ? null : <option key={partValue(r)} value={partValue(r)}>{`${partLabel(r)} (${partOf(r).tileCount})`}</option>))}
-            </optgroup>
-          </select>
-        </label>
-        <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} rowSelectable={false} />
-      </div>
+          <h3>読み込み元</h3>
+          <div class="controls">
+            <label>
+              tiles{" "}
+              <select
+                value={src.kind === "part" ? partValue(src) : src.kind}
+                onChange={(e) => {
+                  const v = e.currentTarget.value;
+                  const [set, part] = v.slice(1).split(".").map(Number);
+                  setSrc(v === "own" || v === "none" ? { kind: v } : { kind: "part", set, part });
+                }}
+              >
+                {map.tiles && <option value="own">ファイル内のタイル</option>}
+                <option value="none">(なし)</option>
+                <optgroup label={`タイルセット部品 (tileCount ${map.tileCount} のもの)`}>
+                  {sameCount.map((r) => <option key={partValue(r)} value={partValue(r)}>{partLabel(r)}</option>)}
+                </optgroup>
+                <optgroup label="タイルセット部品 (その他)">
+                  {allParts.map((r) => (sameCount.includes(r) ? null : <option key={partValue(r)} value={partValue(r)}>{`${partLabel(r)} (${partOf(r).tileCount})`}</option>))}
+                </optgroup>
+              </select>
+            </label>
+            <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} rowSelectable={false} />
+          </div>
 
-      <h3>表示</h3>
-      <div class="controls">
-        {(["layer", "metatiles", "tiles"] as const).map((v) => (
-          <label key={v}>
-            <input type="radio" name="tilemap-view" checked={view === v} onChange={() => setView(v)} /> {v === "layer" ? "レイヤ" : v === "metatiles" ? "メタタイル一覧" : "GBA タイル一覧"}
-          </label>
-        ))}
-      </div>
-      <div class="controls">
-        {view === "layer" && (
-          <span class="stepper">
-            layer {map.layers.map((l, i) => (
-              <label key={i}>
-                <input
-                  type="checkbox"
-                  checked={visible[i]}
-                  onChange={(e) => {
-                    const checked = e.currentTarget.checked;
-                    setVisible((cur) => cur.map((v, k) => (k === i ? checked : v)));
-                  }}
-                />
-                #{i} {l.width}x{l.height} id {hex4(l.id)}
+          <h3>表示</h3>
+          <div class="controls">
+            {(["layer", "metatiles", "tiles"] as const).map((v) => (
+              <label key={v}>
+                <input type="radio" name="tilemap-view" checked={view === v} onChange={() => setView(v)} /> {v === "layer" ? "レイヤ" : v === "metatiles" ? "メタタイル一覧" : "GBA タイル一覧"}
               </label>
             ))}
-          </span>
-        )}
-        {view === "tiles" && <NumberStepper label="palette" value={tileRow} min={0} max={15} onChange={setTileRow} />}
-        <label>
-          scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-        </label>
-        <label>
-          <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
-        </label>
-        <label>
-          <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
-        </label>
-      </div>
-      <p class="mono hover-line">
-        <HoverInfo map={map} view={view} layers={[...drawOrder].reverse()} x={hover[0]} y={hover[1]} />
-      </p>
-      <SpriteCanvas rendered={rendered} scale={scale} grid={grid ? (view === "tiles" ? 8 : 16) : undefined} onHover={(x, y) => setHover([x, y])} />
-      <InfoTable
-        rows={[
-          ["compression", map.compressed ? "LZ77" : "非圧縮"],
-          ["size", `${map.size} bytes`],
-          ["layers", map.layers.length],
-          ["tiles", `${map.tileCount} (${map.tiles ? "ファイル内" : "ファイル外"})`],
-          ["metatiles", map.metatileCount],
-          ["loadOffset", map.loadOffset],
-          [
-            "used by Map",
-            maps.length === 0 ? <span key="v" class="dim">{scripted ? "(スクリプトから見つかっていません)" : "(この ROM のスクリプトは読めないので探していません)"}</span> : (
-              <span key="v">
-                {maps.map((root) => (
-                  <a key={root} href={mapHref(root)} class="load-link">
-                    {hex4(root)}
-                  </a>
+          </div>
+          <div class="controls">
+            {view === "layer" && (
+              <span class="stepper">
+                layer {map.layers.map((l, i) => (
+                  <label key={i}>
+                    <input
+                      type="checkbox"
+                      checked={visible[i]}
+                      onChange={(e) => {
+                        const checked = e.currentTarget.checked;
+                        setVisible((cur) => cur.map((v, k) => (k === i ? checked : v)));
+                      }}
+                    />
+                    #{i} {l.width}x{l.height} id {hex4(l.id)}
+                  </label>
                 ))}
               </span>
-            ),
-          ],
-        ]}
-      />
+            )}
+            {view === "tiles" && <NumberStepper label="palette" value={tileRow} min={0} max={15} onChange={setTileRow} />}
+            <label>
+              scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
+            </label>
+            <label>
+              <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
+            </label>
+            <label>
+              <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
+            </label>
+          </div>
+          <p class="mono hover-line">
+            <HoverInfo map={map} view={view} layers={[...drawOrder].reverse()} x={hover[0]} y={hover[1]} />
+          </p>
+          <InfoTable
+            rows={[
+              ["compression", map.compressed ? "LZ77" : "非圧縮"],
+              ["size", `${map.size} bytes`],
+              ["layers", map.layers.length],
+              ["tiles", `${map.tileCount} (${map.tiles ? "ファイル内" : "ファイル外"})`],
+              ["metatiles", map.metatileCount],
+              ["loadOffset", map.loadOffset],
+              [
+                "used by Map",
+                maps.length === 0 ? <span key="v" class="dim">{scripted ? "(スクリプトから見つかっていません)" : "(この ROM のスクリプトは読めないので探していません)"}</span> : (
+                  <span key="v">
+                    {maps.map((root) => (
+                      <a key={root} href={mapHref(root)} class="load-link">
+                        {hex4(root)}
+                      </a>
+                    ))}
+                  </span>
+                ),
+              ],
+            ]}
+          />
+        </div>
+      </div>
     </div>
   );
 };

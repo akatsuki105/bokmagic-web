@@ -12,7 +12,7 @@
 ## 全体の流れ
 
 ```
-ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した前回の ROM)
+ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した ROM の一覧)
   └ index.tsx: LoadROM (rom.ts) で ROMFile を作る
        ├ gba.ts: ゲームID の確認 (U3IJ / U32J / U32J_rev1 / U33J)
        ├ fs.ts: gFS (ゲーム内のファイルシステム) を読む → ファイルID からオフセットを引ける
@@ -50,7 +50,7 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 | `render.ts`                            | OBJ やタイルを画像 (`Pixels`: 幅・高さ・RGBA の配列, ブラウザに依存しない) にする         | [sprite.md](rom/sprite.md)         |
 | `components.tsx`                       | 画面の共通部品 (キャンバス, パレット, 数値の増減, 説明 `Desc`, 詳細の表 `InfoTable` など) | このページの「画面の約束事」       |
 | `audio.ts`                             | アプリ全体で 1 つの AudioContext と全体の音量                                             | [sound.md](rom/sound.md)           |
-| `rom_store.ts`                         | 最後に開いた ROM を IndexedDB に保存する (localStorage は容量が足りない)                  | —                                  |
+| `rom_store.ts`                         | 開いた ROM を IndexedDB に複数保存する (localStorage は容量が足りない)                    | —                                  |
 | `decomp.ts`                            | decomp 由来の名前の表を、U32J のときだけ返す                                              | 下の「名前の表」                   |
 
 ## 名前の表 (`generated/`)
@@ -70,9 +70,12 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 - 左のタブ、一覧、本文はそれぞれ独立してスクロールし、ページ全体はスクロールしない (`index.html` の `.app`)
 - 選んでいるものは URL の `#タブ/0xXXXX` に入れる (`components.tsx` の `hashID` / `useHashID`)。他のタブへのリンクはこの形で書く (`tilemapHref` など)
 - 本文の並びは全タブで「見出し (ID と名前) → 説明 (`Desc`) → 操作 → 画像 → 詳細の表 (`InfoTable`)」。マウスを乗せたときの情報は画像のすぐ上の 1 行 (`.hover-line`) に出す
+- Map, Tilemap, Collision の 3 つは絵が大きいので、見出しの下を左右に分け、左に絵、右にそれ以外 (説明・操作・マウスの下の情報・表) を同じ順で置く (`index.html` の `.split-view`, `.split`, `.split-canvas`, `.split-side`)。左右はそれぞれスクロールし、右の欄の幅は画面幅の 32% (380〜560px)。画面幅が 1100px より狭いときは、絵 → それ以外の順に縦に並べる
+- Collision のゾーンと経路の表は、ID の一覧と同じ縞にする (`.striped`)
 - 色・フォント・行間は `index.html` の `:root` の変数 (`--text`, `--link`, `--font-sans`, `--font-mono`) で決める。ダークモードは `light-dark()` で切り替える
 - 全体の音量は `audio.ts` が localStorage に保存する
-- 最後に開いた ROM は `rom_store.ts` が IndexedDB に保存する。初期画面の「起動時に自動で開く」(既定は off, localStorage に保存) をオンにすると、ページを開いたときにその ROM を開く (URL の `#` のタブと選択はそのまま)
+- 開いた ROM は `rom_store.ts` が IndexedDB に保存する。中身の SHA-1 で見分けるので、同じ ROM はファイル名が違っても 1 つにまとまる。初期画面に保存してある ROM の一覧 (gameID を `rom.ts` の `GAME_IDS` の順 (U3IJ, U32J, U32J_rev1, U33J) に、同じ gameID はファイル名の順に並べ、開いても並びは変わらない。ファイル名・タイトル・gameID・SHA-1。タイトルを持たない古い保存は、一覧を読むときに本体のヘッダから埋める) を出し、名前を押すと開き、「削除」で消す。1 つだけ保存していた前の版の ROM は引き継がない
+- ROM を開いた後のヘッダには、開いている ROM のカートリッジヘッダのタイトル (`0xA0`, `"ZOKTAI"` など) と gameID、音量だけを出す (ファイル名は出さない)
 
 ## 開発
 

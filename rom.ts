@@ -2,7 +2,8 @@ import * as gba from "./gba.ts";
 import { FileSystem } from "./fs.ts";
 import { loadObjPltt, type ObjPltt } from "./objpltt.ts";
 
-const GAME_IDS = ["U3IJ", "U32J", "U32J_rev1", "U33J"] as const; // U3IJ はボクタイ1 (I は英字)
+// U3IJ はボクタイ1 (I は英字). 初期画面の保存した ROM の一覧はこの順に並べる (文字の順だと U3IJ が最後になるため)
+export const GAME_IDS = ["U3IJ", "U32J", "U32J_rev1", "U33J"] as const;
 export type gameid = typeof GAME_IDS[number];
 
 // 作品ごとに、形式が違ってまだ読めないアセット (画面のタブ名・コマンドラインの種類名)
@@ -21,6 +22,7 @@ const isSupportedGameID = (id: string): id is gameid => {
 export type ROMFile = {
   name: string; // filename
   id: gameid;
+  title: string; // カートリッジヘッダのタイトル ("ZOKTAI" など)
   data: DataView; // file data
   fs: FileSystem;
   objPltt: ObjPltt; // gObjPlttData
@@ -36,6 +38,7 @@ export const LoadROM = (filename: string, data: ArrayBuffer): ROMFile => {
   return {
     name: filename,
     id: gameID,
+    title: gba.getGameTitle(dv),
     data: dv,
     fs,
     objPltt: loadObjPltt(dv, fs),

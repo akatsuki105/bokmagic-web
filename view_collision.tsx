@@ -133,79 +133,85 @@ const CollisionView: FunctionComponent<{
   }, [map, mode]);
 
   return (
-    <div class="sprite-view">
+    <div class="sprite-view split-view">
       <h2>{collisionLabel(map.id, false)}</h2>
-      <Desc text={decomp(COLLISION_NAMES)[map.id]?.[1]} />
-      <div class="controls">
-        {(["height", "stairs", "attr", "occluder"] as const).map((m) => (
-          <label key={m}>
-            <input
-              type="radio"
-              name="collision-mode"
-              checked={mode === m}
-              onChange={() => {
-                setMode(m);
-                setHighlight(null);
-              }}
-            />{" "}
-            {m === "height" ? "高さ" : m === "stairs" ? "階段" : m === "attr" ? "属性" : "occluder"}
-          </label>
-        ))}
-      </div>
-      <div class="controls">
-        {(["zones", "paths", "navMesh"] as const).map((o) => (
-          <label key={o}>
-            <input type="checkbox" checked={overlays[o]} onChange={(e) => setOverlays({ ...overlays, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
-          </label>
-        ))}
-        <NumberStepper label="scale" value={scale} min={1} max={8} onChange={setScale} />
-      </div>
-      {legend.length > 0 && (
-        <div class="legend">
-          {legend.map(([v, n]) => (
-            <span key={v} class={v === highlight ? "legend-item selected" : "legend-item"} onClick={() => setHighlight(v === highlight ? null : v)}>
-              <span class="swatch" style={{ background: tileColor({ ...map, tiles: [mode === "attr" ? { ...map.tiles[0], attr: v } : { ...map.tiles[0], occluder: v }] }, mode, 0) }} />
-              {mode === "attr" ? `${hex4(v)} ${attrNames(v)}` : v === 0xFF ? "0xFF なし" : v} ({n})
-            </span>
-          ))}
+      <div class="split">
+        <div class="split-canvas">
+          <CollisionCanvas map={map} mode={mode} overlays={overlays} cell={BASE_CELL * scale} highlight={highlight} onHover={(x, y) => setHover([x, y])} />
         </div>
-      )}
-      <p class="mono hover-line">
-        <HoverInfo map={map} x={hover[0]} y={hover[1]} />
-      </p>
-      <CollisionCanvas map={map} mode={mode} overlays={overlays} cell={BASE_CELL * scale} highlight={highlight} onHover={(x, y) => setHover([x, y])} />
-      <InfoTable
-        rows={[
-          ["size", `${map.width}x${map.height} tiles`],
-          ["tilemapOffset", `(${map.tilemapOffsetX}, ${map.tilemapOffsetY})`],
-          ["unk_0", map.unk_0],
-          ["zones", map.zones.length],
-          ["paths", map.paths.length],
-          ["navMesh", map.navMesh ? (!hasNavIslands(rom.id) ? "島に分けない" : `${map.navMesh.length} islands`) : "なし"],
-          [
-            "loaded by",
-            calls.length > 0
-              ? (
-                <span key="v">
-                  {calls.map((c, i) => (
-                    <span key={i}>
-                      {i > 0 && ", "}
-                      <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
-                      {c.args.n?.[0] !== null && c.args.n?.[0] !== undefined && (
-                        <>
-                          {" "}(<a href={tilemapHref(c.args.n[0])}>tilemap {hex4(c.args.n[0])}</a>)
-                        </>
-                      )}
-                    </span>
-                  ))}
+        <div class="split-side">
+          <Desc text={decomp(COLLISION_NAMES)[map.id]?.[1]} />
+          <div class="controls">
+            {(["height", "stairs", "attr", "occluder"] as const).map((m) => (
+              <label key={m}>
+                <input
+                  type="radio"
+                  name="collision-mode"
+                  checked={mode === m}
+                  onChange={() => {
+                    setMode(m);
+                    setHighlight(null);
+                  }}
+                />{" "}
+                {m === "height" ? "高さ" : m === "stairs" ? "階段" : m === "attr" ? "属性" : "occluder"}
+              </label>
+            ))}
+          </div>
+          <div class="controls">
+            {(["zones", "paths", "navMesh"] as const).map((o) => (
+              <label key={o}>
+                <input type="checkbox" checked={overlays[o]} onChange={(e) => setOverlays({ ...overlays, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
+              </label>
+            ))}
+            <NumberStepper label="scale" value={scale} min={1} max={8} onChange={setScale} />
+          </div>
+          {legend.length > 0 && (
+            <div class="legend">
+              {legend.map(([v, n]) => (
+                <span key={v} class={v === highlight ? "legend-item selected" : "legend-item"} onClick={() => setHighlight(v === highlight ? null : v)}>
+                  <span class="swatch" style={{ background: tileColor({ ...map, tiles: [mode === "attr" ? { ...map.tiles[0], attr: v } : { ...map.tiles[0], occluder: v }] }, mode, 0) }} />
+                  {mode === "attr" ? `${hex4(v)} ${attrNames(v)}` : v === 0xFF ? "0xFF なし" : v} ({n})
                 </span>
-              )
-              : <span key="v" class="dim">{scripted ? "スクリプトから定数で読み込んでいる箇所は見つかっていません" : "この ROM のスクリプトは読めないので探していません"}</span>,
-          ],
-        ]}
-      />
-      <ZoneTable map={map} />
-      <PathTable map={map} />
+              ))}
+            </div>
+          )}
+          <p class="mono hover-line">
+            <HoverInfo map={map} x={hover[0]} y={hover[1]} />
+          </p>
+          <InfoTable
+            rows={[
+              ["size", `${map.width}x${map.height} tiles`],
+              ["tilemapOffset", `(${map.tilemapOffsetX}, ${map.tilemapOffsetY})`],
+              ["unk_0", map.unk_0],
+              ["zones", map.zones.length],
+              ["paths", map.paths.length],
+              ["navMesh", map.navMesh ? (!hasNavIslands(rom.id) ? "島に分けない" : `${map.navMesh.length} islands`) : "なし"],
+              [
+                "loaded by",
+                calls.length > 0
+                  ? (
+                    <span key="v">
+                      {calls.map((c, i) => (
+                        <span key={i}>
+                          {i > 0 && ", "}
+                          <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
+                          {c.args.n?.[0] !== null && c.args.n?.[0] !== undefined && (
+                            <>
+                              {" "}(<a href={tilemapHref(c.args.n[0])}>tilemap {hex4(c.args.n[0])}</a>)
+                            </>
+                          )}
+                        </span>
+                      ))}
+                    </span>
+                  )
+                  : <span key="v" class="dim">{scripted ? "スクリプトから定数で読み込んでいる箇所は見つかっていません" : "この ROM のスクリプトは読めないので探していません"}</span>,
+              ],
+            ]}
+          />
+          <ZoneTable map={map} />
+          <PathTable map={map} />
+        </div>
+      </div>
     </div>
   );
 };
@@ -316,7 +322,7 @@ const ZoneTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
   map.zones.length === 0 ? null : (
     <>
       <h3>ゾーン</h3>
-      <table class="pltt-table">
+      <table class="pltt-table striped">
         <thead>
           <tr>
             <th>#</th>
@@ -347,7 +353,7 @@ const PathTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
   map.paths.length === 0 ? null : (
     <>
       <h3>経路</h3>
-      <table class="pltt-table">
+      <table class="pltt-table striped">
         <thead>
           <tr>
             <th>path.node</th>

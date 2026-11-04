@@ -1,8 +1,8 @@
 import { FunctionComponent, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
-import { isSupported, LoadROM, type ROMFile } from "./rom.ts";
+import { GAME_IDS, isSupported, LoadROM, type ROMFile } from "./rom.ts";
 import { setDecompGame } from "./decomp.ts";
-import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
+import { deleteROM, listROMs, loadROM, type SavedROM, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
 import { ParticleViewer } from "./view_particle.tsx";
@@ -36,21 +36,10 @@ type Tab = typeof TABS[number][0];
 // #tab または #tab/... (タブの中の選択はタブ側が読む)
 const tabFromHash = (): Tab => TABS.find(([id]) => location.hash.slice(1).split("/")[0] === id)?.[0] ?? "main";
 
-// 起動したときに、前回の ROM (IndexedDB に保存したもの) を自動で開くか. 既定は off, localStorage に保存する
-const AUTO_OPEN_KEY = "bokmagic-web.autoOpen";
-const loadAutoOpen = (): boolean => {
-  try {
-    return localStorage.getItem(AUTO_OPEN_KEY) === "1";
-  } catch {
-    return false;
-  }
-};
-const saveAutoOpen = (v: boolean) => {
-  try {
-    localStorage.setItem(AUTO_OPEN_KEY, v ? "1" : "0");
-  } catch {
-    // 保存できなくても (プライベートブラウズなど) 今の画面では効く
-  }
+// 保存した ROM の並び: gameID を GAME_IDS の順 (U3IJ, U32J, U32J_rev1, U33J) に、同じ gameID はファイル名の順に. 開いても並びは変わらない
+const sortSaved = (list: SavedROM[]): SavedROM[] => {
+  const order = (id: string) => (GAME_IDS as readonly string[]).indexOf(id);
+  return [...list].sort((a, b) => order(a.gameID) - order(b.gameID) || a.name.localeCompare(b.name));
 };
 
 const App = () => {
@@ -72,35 +61,36 @@ const App = () => {
     history.pushState(null, "", location.pathname); // ?rom= も消して、読み直しても初期画面のままにする
     setTab(tabFromHash());
   };
-  const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
-  const [autoOpen, setAutoOpen] = useState(loadAutoOpen);
+  const [saved, setSaved] = useState<SavedROM[]>([]); // IndexedDB に保存してある ROM (sortSaved の順)
+  const refreshSaved = () => listROMs().then((list) => setSaved(sortSaved(list))).catch((e) => console.warn("Failed to list saved ROMs:", e));
   const [tab, setTab] = useState<Tab>(tabFromHash());
 
   const open = async (file: File) => {
     try {
       const data = await file.arrayBuffer();
-      setRom(LoadROM(file.name, data));
+      const r = LoadROM(file.name, data);
+      setRom(r);
       setError(null);
       // 保存できなくても (プライベートブラウズなど) 表示はできるので警告だけ出す
-      saveROM({ name: file.name, data }).then(() => setSavedName(file.name)).catch((e) => console.warn("Failed to save ROM:", e));
+      saveROM({ name: file.name, title: r.title, gameID: r.id }, data).then(refreshSaved).catch((e) => console.warn("Failed to save ROM:", e));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
 
-  const openSaved = async () => {
+  const openSaved = async (id: string) => {
     try {
-      const stored = await loadROM();
+      const stored = await loadROM(id);
       if (!stored) throw new Error("Saved ROM not found");
-      setRom(LoadROM(stored.name, stored.data));
+      setRom(LoadROM(stored.meta.name, stored.data));
       setError(null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
 
-  const forget = () => {
-    clearROM().then(() => setSavedName(null)).catch((e) => console.warn("Failed to clear ROM:", e));
+  const forget = (id: string) => {
+    deleteROM(id).then(refreshSaved).catch((e) => console.warn("Failed to delete ROM:", e));
   };
 
   // URL の ?rom= で渡された ROM を取得して開く (エージェントなどが URL だけでアセットを開けるように)
@@ -116,14 +106,11 @@ const App = () => {
     }
   };
 
-  // 起動時: ?rom= があればそれを開く. 無ければ保存してある ROM の名前を読み、自動で開く設定なら開く (どちらも URL の # のタブと選択はそのまま使う)
+  // 起動時: ?rom= があればそれを開く (URL の # のタブと選択はそのまま使う). 初期画面に出す保存してある ROM の一覧を読む
   useEffect(() => {
     const romURL = new URLSearchParams(location.search).get("rom");
     if (romURL) openURL(romURL);
-    savedROMName().then((name) => {
-      setSavedName(name ?? null);
-      if (name && !romURL && loadAutoOpen()) openSaved();
-    }).catch((e) => console.warn("Failed to read saved ROM:", e));
+    refreshSaved();
   }, []);
 
   useEffect(() => {
@@ -139,6 +126,16 @@ const App = () => {
     addEventListener("hashchange", reveal);
     return () => removeEventListener("hashchange", reveal);
   }, [rom, tab]);
+
+  // 左の一覧で「…」で切れている名前は、マウスを乗せたときに全体を出す (title が無いものだけ)
+  useEffect(() => {
+    const over = (e: MouseEvent) => {
+      const el = (e.target as Element | null)?.closest<HTMLElement>(".sprite-list a, .sprite-list li");
+      if (el && !el.title && el.scrollWidth > el.clientWidth) el.title = el.textContent ?? "";
+    };
+    addEventListener("mouseover", over);
+    return () => removeEventListener("mouseover", over);
+  }, []);
 
   // ウィンドウ全体でドラッグ&ドロップを受け付ける
   useEffect(() => {
@@ -162,30 +159,23 @@ const App = () => {
         <h1>
           <a href="./" onClick={reset}>bokmagic-web</a>
         </h1>
-        {/* 読み込み UI は ROM を開いていないときだけ出す (タイトルを押すと戻る, ドロップはいつでも受け付ける) */}
-        {!rom && <ROMUpload open={open} />}
-        {!rom && savedName && (
-          <span>
-            saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>{" "}
-            <label>
-              <input
-                type="checkbox"
-                checked={autoOpen}
-                onChange={(e) => {
-                  const v = e.currentTarget.checked;
-                  setAutoOpen(v);
-                  saveAutoOpen(v);
-                }}
-              />{" "}
-              起動時に自動で開く
-            </label>
-          </span>
-        )}
-        {rom && <span class="rom-name">{rom.name} ({rom.id})</span>}
+        {/* ヘッダには開いている ROM の情報だけを出す. 読み込み UI は ROM を開いていないときの本文に出す (タイトルを押すと戻る, ドロップはいつでも受け付ける) */}
+        {rom && <span class="rom-name">{rom.title} ({rom.id})</span>}
         {rom && <VolumeControl />}
         {error && <span class="error">{error}</span>}
       </header>
-      {!rom && <p class="no-rom">ROM ファイルを選ぶか、ウィンドウにドロップしてください</p>}
+      {!rom && (
+        <div class="no-rom">
+          <p>ROM ファイルを選ぶか、ウィンドウにドロップしてください</p>
+          <ROMUpload open={open} />
+          {saved.length > 0 && (
+            <>
+              <h2>保存してある ROM</h2>
+              <SavedList saved={saved} open={openSaved} forget={forget} />
+            </>
+          )}
+        </div>
+      )}
       {rom && (
         <div class="app-body">
           <nav class="tabs">
@@ -211,6 +201,44 @@ const App = () => {
     </div>
   );
 };
+
+// 初期画面の、保存してある ROM の一覧. 名前を押すと開く
+const SavedList: FunctionComponent<{ saved: SavedROM[]; open: (id: string) => void; forget: (id: string) => void }> = ({ saved, open, forget }) => (
+  <table class="saved-roms">
+    <thead>
+      <tr>
+        <th>ファイル</th>
+        <th>タイトル</th>
+        <th>gameID</th>
+        <th>SHA-1</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      {saved.map((s) => (
+        <tr key={s.id}>
+          <td>
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                open(s.id);
+              }}
+            >
+              {s.name}
+            </a>
+          </td>
+          <td>{s.title}</td>
+          <td class="mono">{s.gameID}</td>
+          <td class="mono">{s.id}</td>
+          <td>
+            <button type="button" onClick={() => forget(s.id)}>削除</button>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
 
 const ROMUpload: FunctionComponent<{ open: (file: File) => Promise<void> }> = ({ open }) => {
   const [busy, setBusy] = useState(false);

@@ -3,6 +3,14 @@
   <head>
     <meta charset="utf-8" />
     <title>bokmagic-web</title>
+    <meta name="description" content="ボクらの太陽シリーズの ROM のアセットビューワ" />
+    <!-- SNS で URL を貼ったときのプレビュー (画像は付けない) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="bokmagic-web" />
+    <meta property="og:title" content="bokmagic-web" />
+    <meta property="og:description" content="ボクらの太陽シリーズの ROM のアセットビューワ" />
+    <meta property="og:url" content="https://akatsuki105.github.io/bokmagic-web/" />
+    <meta name="twitter:card" content="summary" />
     <style>
       :root {
         color-scheme: light dark;
@@ -11,6 +19,11 @@
         /* 目が疲れにくいように、ダークモードの文字は白でなく少し暗い灰色にする */
         --text: light-dark(#333b3c, #d0d0d0);
         --link: light-dark(#2f55c9, #8ea6e6);
+        /* ダークモードでは領域ごとに背景の明るさを少し変えて、線を引かずに区切る (外側ほど暗く: ヘッダとタブ < 一覧 < 本文). ライトモードは同じ色 */
+        --bg-side: light-dark(#efedea, #1f1f1f);
+        --bg-list: light-dark(#efedea, #242424);
+        --stripe: light-dark(transparent, rgb(255 255 255 / 0.08)); /* 一覧の偶数行 (明るく) */
+        --stripe-odd: light-dark(transparent, rgb(0 0 0 / 0.15)); /* 一覧の奇数行 (暗く) */
         /* 英数字と日本語で字形がそろうように、フォントを具体的に指定する (日本語は等幅でもヒラギノなどの同じゴシックで出す) */
         --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
         --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", monospace;
@@ -36,8 +49,7 @@
       select {
         font-family: inherit;
       }
-      /* 一覧と表は行数が多いので、本文より少しだけ詰める */
-      .sprite-list,
+      /* 表は行数が多いので、本文より少しだけ詰める (一覧は読みやすさを優先して .sprite-list で広めに取る) */
       .pltt-table {
         line-height: 1.4;
       }
@@ -53,7 +65,8 @@
         align-items: center;
         gap: 4px 16px;
         padding: 6px 12px;
-        border-bottom: 1px solid light-dark(#cfcac3, #444444);
+        background: var(--bg-side);
+        border-bottom: 1px solid light-dark(#cfcac3, transparent);
       }
       .app-header h1 {
         font-size: 18px;
@@ -68,6 +81,25 @@
       }
       .no-rom {
         padding: 0 12px;
+        overflow-y: auto;
+      }
+      .no-rom h2 {
+        font-size: 1.1em;
+        margin: 1.5em 0 0.5em;
+      }
+      .saved-roms {
+        border-collapse: collapse;
+        margin-bottom: 1em;
+      }
+      .saved-roms th,
+      .saved-roms td {
+        padding: 4px 12px 4px 0;
+        text-align: left;
+        border-bottom: 1px solid light-dark(#dcd7d0, #3a3a3a);
+      }
+      .saved-roms th {
+        font-weight: normal;
+        opacity: 0.7;
       }
       button,
       input,
@@ -84,7 +116,6 @@
         flex: 1;
         min-height: 0;
         display: flex;
-        gap: 1em;
       }
       .tab-body {
         display: contents;
@@ -93,14 +124,17 @@
         display: flex;
         flex-direction: column;
         flex-shrink: 0;
-        gap: 2px;
+        gap: 8px;
         padding-top: 8px;
         padding-right: 8px;
         overflow-y: auto;
-        border-right: 1px solid light-dark(#dcd7d0, #3a3a3a); /* 一覧との区切り, 目立たない色 */
+        background: var(--bg-side);
+        border-right: 1px solid light-dark(#dcd7d0, transparent); /* 一覧との区切り. ダークモードは背景の違いで区切る */
       }
       .tab {
-        padding: 4px 8px;
+        padding: 10px 14px;
+        font-size: 18px;
+        font-weight: bold;
         color: inherit;
         text-decoration: none;
         border-left: 3px solid transparent;
@@ -114,7 +148,13 @@
         min-width: 0;
         min-height: 0;
         display: flex;
-        gap: 1em;
+      }
+      /* 左の一覧. 本文との間は隙間ではなく余白で空け、背景を途切れさせない */
+      .viewer > .sprite-list,
+      .viewer > .list-pane {
+        background: var(--bg-list);
+        padding: 8px 8px 0 12px;
+        max-width: 25vw; /* 長い名前で本文が狭くならないように. はみ出す名前は「…」で切り、マウスを乗せると全体を出す (index.tsx) */
       }
       .stepper {
         display: inline-flex;
@@ -136,6 +176,8 @@
         overflow-y: auto;
         padding-top: 8px;
         font-family: var(--font-mono);
+        font-size: 17px;
+        line-height: 1.5;
       }
       /* 一覧の上に検索欄などがあるもの */
       .list-pane {
@@ -148,10 +190,22 @@
       .list-pane > .sprite-list {
         flex: 1;
         min-height: 0;
+        padding-top: 0;
+      }
+      .sprite-list li,
+      .sprite-list a {
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
       .sprite-list li {
-        padding: 2px 4px;
+        padding: 6px 8px;
         cursor: pointer;
+      }
+      .sprite-list li:nth-child(odd) {
+        background: var(--stripe-odd);
+      }
+      .sprite-list li:nth-child(even) {
+        background: var(--stripe);
       }
       .sprite-list li.selected {
         background: light-dark(#cfd8ff, #3a4470);
@@ -160,7 +214,7 @@
         flex: 1;
         min-width: 0;
         overflow: auto;
-        padding: 0 12px 24px 0;
+        padding: 0 12px 24px 16px;
       }
       .controls {
         display: flex;
@@ -241,6 +295,59 @@
       .pltt-table td {
         padding: 1px 8px;
         text-align: left;
+      }
+      /* ID の一覧と同じ縞にする表 (Collision のゾーン・経路) */
+      .striped tbody tr:nth-child(odd) {
+        background: var(--stripe-odd);
+      }
+      .striped tbody tr:nth-child(even) {
+        background: var(--stripe);
+      }
+      .striped th,
+      .striped td {
+        padding: 4px 8px;
+        white-space: nowrap; /* 右の欄が狭くても折り返さず、欄の中で横にスクロールする */
+      }
+      /* Map, Tilemap, Collision: 見出しの下を、左に絵、右にそれ以外を並べる. 左右はそれぞれスクロールする. 狭い画面では今までどおり縦に並べる */
+      .sprite-view.split-view {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        padding-bottom: 0;
+      }
+      .split {
+        flex: 1;
+        min-height: 0;
+        display: flex;
+        gap: 16px;
+      }
+      .split-canvas {
+        flex: 1;
+        min-width: 0;
+        overflow: auto;
+        padding-bottom: 24px;
+      }
+      .split-side {
+        width: clamp(380px, 32vw, 560px); /* 表が折り返しにくいよう、広い画面では少し広げる */
+        flex-shrink: 0;
+        overflow: auto;
+        padding-bottom: 24px;
+      }
+      @media (max-width: 1100px) {
+        .sprite-view.split-view {
+          display: block;
+          overflow: auto;
+          padding-bottom: 24px;
+        }
+        .split {
+          display: block;
+        }
+        .split-canvas,
+        .split-side {
+          width: auto;
+          overflow: visible;
+          padding-bottom: 0;
+        }
       }
       .bgpltt-grid {
         width: fit-content;
