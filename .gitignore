@@ -2,6 +2,6 @@ tmp/
 dist/
 *.js
 *.js.map
-rom/
+/rom/
 *.gba
 *.sav
