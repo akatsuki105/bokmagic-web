@@ -1,6 +1,7 @@
 import { FunctionComponent, render } from "preact";
 import { useEffect, useState } from "preact/hooks";
 import { LoadROM, type ROMFile } from "./rom.ts";
+import { setDecompGame } from "./decomp.ts";
 import { clearROM, loadROM, savedROMName, saveROM } from "./rom_store.ts";
 import { MainSpriteViewer } from "./view_main.tsx";
 import { AuxSpriteViewer } from "./view_aux.tsx";
@@ -40,6 +41,8 @@ const App = () => {
   // ROM を読み込むたびに増やす, タブの中身をこれで作り直して前の ROM の選択状態を持ち越さないようにする
   const [romSerial, setRomSerial] = useState(0);
   const setRom = (r: ROMFile) => {
+    // decomp 由来の名前を出すかどうかは画面側で決める (データ側は decomp に依存しない)
+    setDecompGame(r.id);
     setRomState(r);
     setRomSerial((n) => n + 1);
   };

@@ -10,6 +10,7 @@ export type RenderOptions = {
   maxSeconds?: number; // 最大の長さ (既定 600 秒)
   gain?: number; // 全体の音量 (既定 0.8)
   maxDirectVoices?: number; // DirectSound の同時発音数 (既定 12)
+  mixerRate?: number; // ミキサーのサンプリング周波数 (m4aSoundMode), 音程を変えない音色の速さに効く (既定 13379)
 };
 
 export type Rendered = {
@@ -26,7 +27,7 @@ export const renderSong = (rom: DataView, headerAddress: number, opts: RenderOpt
   const fadeFrames = Math.round((opts.fadeSeconds ?? 4) * FRAME_RATE);
   const maxFrames = Math.round((opts.maxSeconds ?? 600) * FRAME_RATE);
   const gain = opts.gain ?? 0.8;
-  const player = new SongPlayer(rom, headerAddress, { maxDirectVoices: opts.maxDirectVoices });
+  const player = new SongPlayer(rom, headerAddress, { maxDirectVoices: opts.maxDirectVoices, mixerRate: opts.mixerRate });
 
   const chunks: [Float32Array, Float32Array][] = [];
   let chunkL = new Float32Array(sampleRate), chunkR = new Float32Array(sampleRate);

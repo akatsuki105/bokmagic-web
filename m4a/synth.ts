@@ -127,6 +127,7 @@ export class Voice {
     public gate: number, // 残りのティック数, 0 ならタイ (EOT まで鳴らす)
     rom: DataView,
     waveCache: Map<number, Wave>,
+    private mixerRate: number, // ミキサーのサンプリング周波数 (m4aSoundMode), 音程を変えない音色はこの速さで1サンプルずつ進む
   ) {
     this.kind = tone.type & TONE_CGB;
     if ((this.kind === 0 || this.kind === 3) && !isRomPointer(tone.wav)) {
@@ -254,7 +255,7 @@ export class Voice {
     const fine = this.track.pitM & 0xFF;
     if (this.kind === 0) {
       const w = this.wave!;
-      if (this.tone.type & TONE_FIX) return w.freq / 1024;
+      if (this.tone.type & TONE_FIX) return this.mixerRate; // SoundMainRAM: 出力1サンプルごとに波形を1サンプル進める
       const k = Math.min(178, Math.max(0, key));
       return (w.freq / 1024) * Math.pow(2, (k - 60 + fine / 256) / 12);
     }
@@ -276,16 +277,24 @@ export class Voice {
       const w = this.wave!;
       const gr = (this.env * r) / 65536 / 128 * gain, gl = (this.env * l) / 65536 / 128 * gain;
       const data = w.data, size = w.size;
+      const loops = w.loop && w.loopStart < size;
+      // 音程を変える音色は隣のサンプルとの間を直線で補間する (SoundMainRAM), 変えない音色 (FIX) は補間しない
+      const interp = !(this.tone.type & TONE_FIX);
       let pos = this.pos;
       for (let i = 0; i < count; i++) {
         if (pos >= size) {
-          if (!w.loop || w.loopStart >= size) {
+          if (!loops) {
             this.state = "off";
             break;
           }
           pos = w.loopStart + ((pos - size) % (size - w.loopStart));
         }
-        const s = data[pos | 0];
+        const p = pos | 0;
+        let s = data[p];
+        if (interp) {
+          const next = p + 1 < size ? data[p + 1] : loops ? data[w.loopStart] : 0;
+          s += (next - s) * (pos - p);
+        }
         left[offset + i] += s * gl;
         right[offset + i] += s * gr;
         pos += step;

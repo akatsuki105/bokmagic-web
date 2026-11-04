@@ -3,7 +3,7 @@
 import { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
-import { type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "./font.ts";
+import { FONT_FILE, type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "./font.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./generated/charmap.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
@@ -18,7 +18,11 @@ const FONT_PLTT_ROW = 15; // Font_DrawHankakuChar / Font_DrawZenkakuChar はマ�
 const codeOf = (kind: GlyphKind, g: number) => (kind === "hankaku" ? (g + 0x20).toString(16).toUpperCase().padStart(2, "0") : `${((g >> 8) | 0x80).toString(16).toUpperCase()} ${(g & 0xFF).toString(16).toUpperCase().padStart(2, "0")}`);
 
 export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
-  const font = useMemo(() => parseFonts(rom.data, rom.fs)[0], [rom]);
+  // ゲームが使うフォントファイル (FONT_FILE) を ID で引く, 無ければディレクトリの先頭
+  const font = useMemo(() => {
+    const fonts = parseFonts(rom.data, rom.fs);
+    return fonts.find((f) => f.id === FONT_FILE) ?? fonts[0];
+  }, [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
   const [kind, setKind] = useState<GlyphKind>("zenkaku");
   const [plttFile, setPlttFile] = useState(FONT_PLTTS[0]);

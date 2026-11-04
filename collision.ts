@@ -32,7 +32,7 @@ export type CollisionMap = {
   height: number; // 奥行き (タイル数)
   tilemapOffsetX: number;
   tilemapOffsetY: number;
-  tiles: CollisionTile[]; // [z * width + x] (Map_ResetCollisionMap の rowOffsets と同じ)
+  tiles: CollisionTile[]; // [z * width + x] (Map_BuildRowOffsets が作る rowOffsets と同じ並び)
   zones: Zone[];
   paths: Path[];
   navMesh?: NavIsland[]; // ヘッダの navMesh が 0 なら無し

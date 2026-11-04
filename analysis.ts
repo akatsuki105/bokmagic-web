@@ -4,7 +4,7 @@ import type { ROMFile } from "./rom.ts";
 import { decodeScript, parseScriptDirectory, type ScriptDirectory } from "./script.ts";
 import { type LoadCall, ScriptScanner, SUB_CREATE_BG, SUB_LOAD_COLLISION, SUB_LOAD_TILEMAP, SUB_LOAD_TILESET, SUB_MAP_PLTT, SUB_SET_STAGE } from "./script_scan.ts";
 import { InsnType, type Instruction } from "./bokcc/instruction.ts";
-import { layerBGs } from "./tilemap.ts";
+import { DEFAULT_LAYER_COUNT, DEFAULT_LAYOUT, layoutBGs } from "./tilemap.ts";
 
 const cache = new WeakMap<ROMFile, Map<string, unknown>>();
 const memo = <T>(rom: ROMFile, key: string, f: () => T): T => {
@@ -105,8 +105,8 @@ const callKey = (c: LoadCall) => `${c.address}:${tilemapID(c)}`;
 
 // Cmd_LoadTileMap が使う BG の番号
 export const callBGs = (c: LoadCall): number[] => {
-  const t = c.args.t?.[0];
-  return t === null || t === undefined ? [] : [...layerBGs(t, c.args.n?.[0] ?? 1, c.args.i).values()];
+  const t = c.args.t === undefined ? DEFAULT_LAYOUT : c.args.t[0];
+  return t === null ? [] : layoutBGs(t, c.args.n === undefined ? DEFAULT_LAYER_COUNT : c.args.n[0] ?? DEFAULT_LAYER_COUNT);
 };
 
 // a が b を (定数のスクリプト呼び出しで) 間接的にでも呼んでいるか

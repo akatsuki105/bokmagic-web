@@ -132,23 +132,48 @@ export const renderComposite = (items: LayerSource[], colors: Uint32Array, trans
 
 export const renderLayers = (map: Tilemap, layers: TilemapLayer[], vram: Uint8Array, colors: Uint32Array, transparent0: boolean): Rendered => renderComposite(layers.map((layer) => ({ map, layer, vram })), colors, transparent0);
 
-// '.t' (BG の構成) が 0 と 6 のときは、その BG のキャラクタブロックを 2 (VRAM の 0x8000) にし、ファイル内のタイルも loadOffset によらずそこに置く
-// それ以外はキャラクタブロック 0 で、タイルは loadOffset に置く (Video_SetupBGLayout)
-export const layoutCharBase = (layout: number) => (layout === 0 || layout === 6 ? 0x8000 : 0);
+// Cmd_LoadTileMap の '.t' (BG の構成) と '.n' (レイヤ数) が無いときの値
+export const DEFAULT_LAYOUT = 1;
+export const DEFAULT_LAYER_COUNT = 1;
 
-// Cmd_LoadTileMap の '.t' (BG の構成) ごとに、レイヤを割り当てる BG の並び (Video_SetupBGLayout の分岐表)
-// 1, 4, 5 は '.n' が 2 のときだけ2つ目の BG を使う
+// '.t' ごとに、レイヤを載せる BG の並び (Video_SetupBGLayout の分岐表)
+// 1, 4, 5 は '.n' が 2 のときだけ2つ目の BG を使う. 0-7 以外はどの BG にも載せない
 const LAYOUT_BGS: Record<number, number[]> = { 0: [0], 1: [2, 3], 2: [3], 3: [1], 4: [1, 3], 5: [2, 1], 6: [1], 7: [2, 3, 1] };
 const LAYOUT_TWO = new Set([1, 4, 5]);
 
-// レイヤ番号 -> BG 番号, indices は '.i' (k 番目の BG に載せるレイヤ番号, 無ければ k)
-export const layerBGs = (layout: number, count: number, indices?: (number | null)[]): Map<number, number> => {
-  const bgs = LAYOUT_BGS[layout] ?? [2];
-  const n = LAYOUT_TWO.has(layout) ? (count === 2 ? 2 : 1) : bgs.length;
-  const map = new Map<number, number>();
-  for (let k = 0; k < n; k++) map.set(indices?.[k] ?? k, bgs[k]);
-  return map;
+// '.t' が 0 と 6 のときは、その BG のキャラクタブロックを 2 (VRAM の 0x8000) にする. それ以外はキャラクタブロック 0
+export const layoutCharBase = (layout: number) => (layout === 0 || layout === 6 ? 0x8000 : 0);
+
+// ファイル内のタイルを置く VRAM のバイト位置: 0 と 6 は loadOffset によらず 0x8000, 1-7 は loadOffset, それ以外は 0 (分岐表の default)
+export const layoutTileOffset = (layout: number, loadOffset: number) => (layout === 0 || layout === 6 ? 0x8000 : layout >= 1 && layout <= 7 ? loadOffset * 32 : 0);
+
+// レイヤを載せる BG の並び (どのレイヤを載せるかは問わない)
+export const layoutBGs = (layout: number, count: number): number[] => {
+  const bgs = LAYOUT_BGS[layout] ?? [];
+  return bgs.slice(0, LAYOUT_TWO.has(layout) ? (count === 2 ? 2 : 1) : bgs.length);
 };
+
+// Cmd_LoadTileMap の indices (k 番目の BG に載せるレイヤ番号, 4 個)
+// '.i' があればその値 (足りない分は 0), 無ければ k. '.i' が無くて '.c' があれば、レイヤID から引いた番号で上書きする (見つからなければ 0, FUN_08000c84)
+// '.c' は map が無いと引けないので k のまま. スクリプトから値が決まらなかったもの (null) は null のまま返す
+export const loadIndices = (args: Record<string, (number | null)[]>, map?: Tilemap): (number | null)[] => {
+  const i = args.i, c = args.c;
+  if (i) return [0, 1, 2, 3].map((k) => (k < i.length ? i[k] : 0));
+  const out: (number | null)[] = [0, 1, 2, 3];
+  if (c && map) {
+    c.slice(0, 4).forEach((id, k) => {
+      if (id === null) out[k] = null;
+      else {
+        const idx = map.layers.findIndex((l) => l.id === id);
+        out[k] = idx < 0 ? 0 : idx;
+      }
+    });
+  }
+  return out;
+};
+
+// Video_SetupBGLayout: [BG, レイヤ番号] の並び. k 番目の BG に載せるのは、k < '.n' なら indices[k]、そうでなければ k 番目のレイヤ
+export const layerBGs = (layout: number, count: number, indices: (number | null)[]): { bg: number; layer: number | null }[] => layoutBGs(layout, count).map((bg, k) => ({ bg, layer: k < count ? indices[k] ?? null : k }));
 
 // BG の優先度の既定値 (Video_InitBGMode, Cmd_CreateBG の '.p' の既定値と同じ), 小さいほど手前
 export const DEFAULT_BG_PRIO: Record<number, number> = { 0: 0, 1: 1, 2: 3, 3: 1 };

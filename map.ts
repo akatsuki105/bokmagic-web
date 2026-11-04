@@ -3,7 +3,7 @@
 import type { ROMFile } from "./rom.ts";
 import type { MapScene } from "./analysis.ts";
 import type { LoadCall } from "./script_scan.ts";
-import { bgDepth, DEFAULT_BG_PRIO, layerBGs, type LayerSource, layoutCharBase, parseTilemap, type Tilemap, tilemapFiles } from "./tilemap.ts";
+import { bgDepth, DEFAULT_BG_PRIO, DEFAULT_LAYER_COUNT, DEFAULT_LAYOUT, layerBGs, type LayerSource, layoutCharBase, layoutTileOffset, loadIndices, parseTilemap, type Tilemap, tilemapFiles } from "./tilemap.ts";
 import { partTiles, type TileSet } from "./tileset.ts";
 
 // BG VRAM 全体 (キャラクタブロック 0-3, 64KB)
@@ -50,7 +50,7 @@ export const buildScene = (rom: ROMFile, scene: MapScene, ts: TileSet | undefine
   const vram = new Uint8Array(VRAM_SIZE);
   for (const c of scene.tilesets) {
     if (!ts) break;
-    const bg = c.args.t?.[0];
+    const bg = c.args.t === undefined ? 0 : c.args.t[0]; // '.t' が無ければ 0 (Cmd_LoadTileSet の既定値)
     let idx = c.args.s?.[0] ?? 0;
     const m = getMap(c.args.m?.[0]);
     if (m) idx = m.loadOffset;
@@ -67,11 +67,14 @@ export const buildScene = (rom: ROMFile, scene: MapScene, ts: TileSet | undefine
   const slots = new Map<number, BgSlot>();
   for (const c of scene.tilemaps) {
     const map = getMap(c.args.d?.[0]);
-    const t = c.args.t?.[0];
-    if (!map || t === null || t === undefined) continue;
+    const t = c.args.t === undefined ? DEFAULT_LAYOUT : c.args.t[0];
+    if (!map || t === null) continue;
     const charBase = layoutCharBase(t);
-    if (map.tiles) put(vram, charBase || map.loadOffset * 32, map.tiles);
-    for (const [layer, bg] of layerBGs(t, c.args.n?.[0] ?? 1, c.args.i)) {
+    if (map.tiles) put(vram, layoutTileOffset(t, map.loadOffset), map.tiles);
+    const count = c.args.n === undefined ? DEFAULT_LAYER_COUNT : c.args.n[0] ?? DEFAULT_LAYER_COUNT;
+    for (const [k, { bg, layer: l }] of layerBGs(t, count, loadIndices(c.args, map)).entries()) {
+      // レイヤ番号がスクリプトから決まらなかったときは k 番目のレイヤにする (推測: '.i' を書かない呼び出しと同じ)
+      const layer = l ?? k;
       if (!map.layers[layer]) continue;
       slots.set(bg, { bg, prio: DEFAULT_BG_PRIO[bg] ?? 0, map, layer, charBase, call: c });
     }

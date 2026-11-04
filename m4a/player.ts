@@ -120,6 +120,7 @@ class Track implements TrackOut {
 
 export type PlayerOptions = {
   maxDirectVoices?: number; // DirectSound の同時発音数 (m4aSoundMode の maxChans)
+  mixerRate?: number; // ミキサーのサンプリング周波数 (m4aSoundMode の freq), 既定は m4a の SoundInit と同じ 13379 Hz
 };
 
 export class SongPlayer {
@@ -128,14 +129,17 @@ export class SongPlayer {
   voices: Voice[] = [];
   private tempoD = 150;
   private tempoC = 0;
-  private mem = new Uint8Array(16); // gMPlayMemAccArea
+  // gMPlayMemAccArea (ゲームでは全プレイヤーで共有する 16 バイト), 添字はマスクされないのではみ出しても読めるように 256 バイト持つ
+  private mem = new Uint8Array(256);
   private waveCache = new Map<number, Wave>();
   private maxDirect: number;
+  private mixerRate: number;
 
   constructor(private rom: DataView, headerAddress: number, opts: PlayerOptions = {}) {
     this.header = readSongHeader(rom, headerAddress);
     this.tracks = this.header.tracks.map((a) => new Track(a));
     this.maxDirect = opts.maxDirectVoices ?? 12;
+    this.mixerRate = opts.mixerRate ?? 13379;
   }
 
   // 全トラックが終わった (FINE)
@@ -249,7 +253,7 @@ export class SongPlayer {
           t.patternStack.push(t.ptr + 4);
           t.ptr = toOffset(this.u32(t.ptr));
         } else {
-          t.ptr += 4;
+          this.fine(t); // 3 段を超えたら ply_fine (トラックの終わり)
         }
         return;
       case PEND:
@@ -340,18 +344,19 @@ export class SongPlayer {
 
   // ply_memacc: gMPlayMemAccArea への演算と条件付きジャンプ
   private memacc(t: Track) {
-    const op = this.arg(t), addr = this.arg(t) & 15, data = this.arg(t);
+    const op = this.arg(t), addr = this.arg(t), data = this.arg(t);
     const mem = this.mem;
     if (op <= 5) {
       if (op === 0) mem[addr] = data;
       else if (op === 1) mem[addr] += data;
       else if (op === 2) mem[addr] -= data;
-      else if (op === 3) mem[addr] = mem[data & 15];
-      else if (op === 4) mem[addr] += mem[data & 15];
-      else mem[addr] -= mem[data & 15];
+      else if (op === 3) mem[addr] = mem[data];
+      else if (op === 4) mem[addr] += mem[data];
+      else mem[addr] -= mem[data];
       return;
     }
-    const a = mem[addr], b = op >= 12 ? mem[data & 15] : data;
+    if (op >= 18) return; // 未定義の演算は何もしない (ポインタも読まない)
+    const a = mem[addr], b = op >= 12 ? mem[data] : data;
     const k = (op - 6) % 6;
     const jump = [a === b, a !== b, a > b, a >= b, a <= b, a < b][k];
     if (jump) t.ptr = toOffset(this.u32(t.ptr));
@@ -445,6 +450,6 @@ export class SongPlayer {
       }
     }
     this.voices = this.voices.filter((v) => v.active);
-    this.voices.push(new Voice(t, tone, key, t.key, t.velocity, rhythmPan, gate, this.rom, this.waveCache));
+    this.voices.push(new Voice(t, tone, key, t.key, t.velocity, rhythmPan, gate, this.rom, this.waveCache, this.mixerRate));
   }
 }

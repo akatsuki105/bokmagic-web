@@ -15,8 +15,8 @@ export const cmdFlip = (cmd: AuxAnimCmd) => (cmd & 0x30) >> 4; // AuxAnimPlayFla
 export const cmdPose = (cmd: AuxAnimCmd) => cmd >> 6;
 
 // AuxAnim, cmds は variant ごとに cmdCount 個ずつ並ぶ
-// decomp の AuxAnim.variantCount (u8) は実際には variant 数 << 4 が入っている (下位4ビットは全て0)
-// 根拠: 全ファイルで sum(cmdCount * max(1, variantCount >> 4)) が AuxAnimFile.cmdCount と一致する
+// 先頭バイトの上位4ビットが variant 数 (decomp の AuxAnim は unk_0:4 と variantCount:4 のビットフィールド)
+// 根拠: 全ファイルで sum(cmdCount * max(1, variantCount)) が AuxAnimFile.cmdCount と一致する
 export type AuxAnim = {
   variantCount: number; // variant 数 (0 のものも variant 0 だけは読める)
   cmdCount: number;

@@ -15,6 +15,9 @@ const SONG_TABLE: Partial<Record<ROMFile["id"], number>> = {
   U32J_rev1: 0x0825E56C,
 };
 
+// ミキサーのサンプリング周波数: m4aSoundInit が m4aSoundMode(0x97FC00) で SOUND_MODE_FREQ_21024 にする
+const MIXER_RATE = 21024;
+
 const songLabel = (index: number) => {
   const name = decomp(SONG_NAMES)[index];
   const num = String(index).padStart(3, "0");
@@ -92,7 +95,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
   }, [playing]);
 
   const render = () => {
-    const r = renderSong(rom.data, song.header, { loops });
+    const r = renderSong(rom.data, song.header, { loops, mixerRate: MIXER_RATE });
     setRendered(r);
     return r;
   };
