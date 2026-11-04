@@ -4,7 +4,7 @@ Collision Map は、マップの床の高さ・階段・属性と、ゾーン・
 
 ## ROM 上の位置
 
-- gFS のディレクトリ `DIR_COLLISION_MAP` = `0xAE6C` ([filesystem.md](filesystem.md))。U32J rev1 では `gCollisionMapsDirectory` (`0x087B260C`), 246 ファイル
+- gFS のディレクトリ `DIR_COLLISION_MAP` = `0xAE6C` ([filesystem.md](filesystem.md))。U32J rev1 では `gCollisionMapsDirectory` (`0x087B260C`), 246 ファイル。U3IJ は 349 ファイル
 - 先頭が `"HP"` なら非圧縮、そうでなければ LZ77 で圧縮されている (`OpenCollisionMapFile`)
 - スクリプトからは `Map_LoadMapScripted` (`0x30AD`) の `'.p'` で読み込む
 
@@ -112,6 +112,15 @@ NavIsland (配列のオフセットは島の先頭から):
 - NavRect: `0x00` u8 minX, `0x01` u8 minY (z), `0x02` u8 maxX, `0x03` u8 maxY (含まない, いずれもタイル単位), `0x04` u8[12] portals (ポータル番号, 未使用は末尾に `0xFF`)
 - NavPortal: `0x00` u16 x, `0x02` u16 y (z, 1 タイル = 256), `0x04` u16 unk_4, `0x06` u8[6] rects (矩形番号, 未使用は末尾に `0xFF`)
 
+### U3IJ (ボクタイ1) との違い
+
+ボクタイ1 の decomp は無いので、bokmagic (`lib/src/NavigationMeshCompiler.cpp` の `engine == 1` の分岐) と Boktai Hacking Wiki の「Collision map file」を手がかりに、U3IJ の 349 ファイルで確かめた。
+
+- NavMesh に島の表が無い。`navMesh` のオフセットの先に、NavIsland 1 つ分がそのまま置かれる (`collision.ts` の `hasNavIslands`)
+- 四角形も出入口も無いファイル (`0x0C07`, `0x782C`, `0xD4E6`) では、NavMesh が 4 バイトの 0 だけで終わり、`offsetTo*` が無い。数が 0 なら後ろを読まない
+- それ以外 (ヘッダ、タイル、ゾーン、経路) は U32J と同じ形で読める。Wiki はタイルを「`effect` (u16), `obj` (u8), `stairs_and_height` (u8)」の順に書くが、U3IJ のデータは U32J と同じく先頭のバイトが高さと階段 (上位 4 ビットが 0x10 / 0x20 になるのは先頭のバイト) で、属性は `0x02` の u16 だった
+- U3IJ の属性の値は U32J と分布が違う (`0x02`, `0x04`, `0x40`, `0x80` などが多い)。Wiki はボクタイ1 の bit1 を壁、bit6 を氷、bit7 を溶岩、bit8 を穴とするが、確かめていない
+
 ### 座標系とタイルマップへの投影
 
 ワールド座標は x, z が床の格子 (1 タイル = 256)、y が高さ (高さ 1 段 = 256, タイルの高さ h の床は `y = h << 8`)。
@@ -144,7 +153,7 @@ y' = trunc(((x >> 1) + (z >> 1)) * 48 / 256) - trunc(y * 24 / 256) + (tilemapOff
 3. tileData: width, height, tilemapOffsetX/Y と、`width * height` 個のタイルを `{ height: hs & 0xF, stairs: hs >> 4, occluder, attr }` にする
 4. zones: `count` 個の Zone を読む
 5. paths: `pathCount` 個の Path を読み、各ノードを `PathData の先頭 + nodeOffset + n * 8` から読む
-6. navMesh: オフセットが 0 でなければ、島ごとに `NavMesh の先頭 + islandOffsets[k]` を島の先頭とし、rects / portals / distanceMap を島の先頭からのオフセットで読む。portals と rects の番号の列は `0xFF` で打ち切る
+6. navMesh: オフセットが 0 でなければ、島ごとに (U3IJ は NavMesh の先頭を島 1 つとして) `NavMesh の先頭 + islandOffsets[k]` を島の先頭とし、rects / portals / distanceMap を島の先頭からのオフセットで読む。島の rects と portals の数がどちらも 0 なら、オフセットを読まずに空の島にする。portals と rects の番号の列は `0xFF` で打ち切る
 7. `projectToTilemap`: 上の投影の式
 8. `tileCornerHeights`: タイルの上面の 4 隅 (x0z0, x1z0, x1z1, x0z1) の高さ。h = `height << 8`、縦の階段は z1 側、横の階段は x1 側が h - 255
 9. `tileQuad`: 4 隅を `projectToTilemap` でタイルマップ上の 4 点にする。平らなタイルは菱形、階段は傾いた四角形
@@ -157,7 +166,7 @@ y' = trunc(((x >> 1) + (z >> 1)) * 48 / 256) - trunc(y * 24 / 256) + (tilemapOff
 - Collision タブ (`view_collision.tsx`): 上から見た格子 (x が右, z が下, 1 タイル = 12 px * scale) に、タイルの高さ / 階段 / 属性 / occluder を色と文字で描く。属性と occluder は値ごとの凡例を出し、選んだ値以外を薄くする
   - ゾーン (矩形と ID)、経路 (折れ線とノード番号 `経路.ノード`)、ナビメッシュ (点線の矩形とポータル) を上から見た図で重ねる
   - マウスの下のタイルの値と、タイルの中心を含むゾーンを出す (`collisionTileText`)。ゾーンと経路は表にも出す (座標はタイル単位 = 値 / 256)
-  - 「loaded by」は、このファイルを `'.p'` で読み込むスクリプトと、その呼び出しの `'.n'` のタイルマップ (`analysis.ts` の `collisionLoads`, [map.md](map.md))
+  - 「loaded by」は、このファイルを `'.p'` で読み込むスクリプトと、その呼び出しの `'.n'` のタイルマップ (`analysis.ts` の `collisionLoads`, [map.md](map.md))。スクリプトが読めない U3IJ では探さず、一覧も薄くしない
 - Map タブの重ね描き (`collision_overlay.tsx`)。どれもタイルマップと同じ大きさの canvas を重ねる
   - `CollisionOverlay`: 各タイルの `tileQuad` を `x + z` の小さい (奥の) 順に描く。塗りは属性 (`WALL` は赤, 0 は塗らない) / 高さ / 枠だけ から選び、不透明度を変えられる
   - `IsoGrid`: タイルの境目の線をタイルマップ全体に引く。z が一定の線は傾き +1、x が一定の線は傾き -1 で、どちらも 48 px おき。基準点は `projectToTilemap(map, 0, 0, level << 8)`。高さが 1 段違うと 24 px (格子の半分) ずれるので、線は高さごとに違う。高さの既定値は、そのマップで一番多いタイルの高さ
@@ -176,6 +185,7 @@ y' = trunc(((x >> 1) + (z >> 1)) * 48 / 256) - trunc(y * 24 / 256) + (tilemapOff
 - `src/collision_map.c`: `Map_BuildRowOffsets` (`z * width`), `Map_GetPathNodes` (PathData の先頭 + nodeOffset), `Map_HasLineOfSight` (階段の高さ)
 - `include/map_inline.h`: `GetCollisionTileIdx` (`rowOffsets[z] + x`), `TileHeightAt` (縦は `z & 0xFF`, 横は `x & 0xFF` を引く)
 - `src/sprite_main_arm.c`: `MainSprite_DrawListInternal` の投影の式
+- bokmagic `lib/src/NavigationMeshCompiler.cpp` (`serializeIsland`), Boktai Hacking Wiki「Collision map file」: U3IJ の NavMesh
 - `src/entity_08000a94.c`: `Video_GenerateBackgroundMaps` と `BgMapScroller_Init` の `hofs = x - 120`, `x = gCameraVpCoords.x + gCameraCoords.tilemapX`
 
 ## 未解明

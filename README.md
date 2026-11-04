@@ -6,7 +6,7 @@
 
 ## 対応している ROM
 
-- ボクらの太陽 (U3IJ): Map・Collision・Script 以外
+- ボクらの太陽 (U3IJ): Map・Script 以外
 - 続・ボクらの太陽 (U32J rev1, U32J rev0)
 - 新・ボクらの太陽 (U33J)
 

@@ -40,7 +40,11 @@ export type CollisionMap = {
 
 export const collisionFiles = (fs: FileSystem): FileEntry[] => fs.list(DIR_COLLISION_MAP);
 
-export const parseCollisionMap = (rom: DataView, { id, offset }: FileEntry): CollisionMap => {
+// NavMesh が島の表から始まるか. ボクタイ1 (U3IJ) は島の表が無く、島 1 つ分がそのまま置かれる (bokmagic の NavigationMeshCompiler.cpp の engine == 1 の分岐, Boktai Hacking Wiki の Collision map file)
+export const hasNavIslands = (gameID: string) => gameID !== "U3IJ";
+
+// islands: hasNavIslands の値
+export const parseCollisionMap = (rom: DataView, { id, offset }: FileEntry, islands = true): CollisionMap => {
   const bytes = new Uint8Array(rom.buffer, rom.byteOffset);
   const raw = bytes[offset] === 0x48 && bytes[offset + 1] === 0x50; // "HP"
   // 展開先は gDecompressedCollisionMapHeader で、本体はその4バイト後ろ (gDecompressedCollisionMapFile) から始まる
@@ -88,8 +92,13 @@ export const parseCollisionMap = (rom: DataView, { id, offset }: FileEntry): Col
   let navMesh: NavIsland[] | undefined;
   if (nm) {
     navMesh = [];
-    for (let k = 0; k < u16(nm); k++) {
-      const is = nm + u32(nm + 4 + k * 4);
+    const starts = islands ? Array.from({ length: u16(nm) }, (_, k) => nm + u32(nm + 4 + k * 4)) : [nm];
+    for (const is of starts) {
+      // U3IJ には四角形も出入口も無く、NavMesh が 4 バイトの 0 だけで終わるファイルがある (0x0C07 など). オフセットを読まずに空にする
+      if (u16(is) === 0 && u16(is + 2) === 0) {
+        navMesh.push({ rects: [], portals: [], distanceMap: new Uint16Array(0) });
+        continue;
+      }
       const rects: NavRect[] = [], portals: NavPortal[] = [];
       const rOfs = is + u32(is + 8), pOfs = is + u32(is + 12), dOfs = is + u32(is + 16);
       for (let r = 0; r < u16(is); r++) {

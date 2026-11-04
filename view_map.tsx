@@ -10,7 +10,7 @@ import { mtmapIndex, renderComposite } from "./tilemap.ts";
 import { parseTileSets, type TileSet } from "./tileset.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { GRAYSCALE_PLTT } from "./render.ts";
-import { collisionFiles, type CollisionMap, parseCollisionMap, projectToTilemap, tileAtTilemap } from "./collision.ts";
+import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap, projectToTilemap, tileAtTilemap } from "./collision.ts";
 import { CollisionOverlay, IsoGrid, type OverlayMode, type WorldLayers, WorldOverlay } from "./collision_overlay.tsx";
 import type { LoadCall } from "./script_scan.ts";
 import { scriptHref } from "./view_script.tsx";
@@ -137,7 +137,7 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
   const [world, setWorld] = useState<WorldLayers>({ zones: false, paths: false, navMesh: false });
   const colMap = useMemo((): CollisionMap | null => {
     const f = colFiles.find((f) => f.id === colID);
-    return f ? parseCollisionMap(rom.data, f) : null;
+    return f ? parseCollisionMap(rom.data, f, hasNavIslands(rom.id)) : null;
   }, [rom, colFiles, colID]);
   // グリッドを引く高さ, 既定はそのマップで一番多い高さ
   const [isoHeight, setIsoHeight] = useState<number | null>(null);

@@ -2,9 +2,9 @@
 
 import { FunctionComponent } from "preact";
 import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
-import type { ROMFile } from "./rom.ts";
+import { isSupported, type ROMFile } from "./rom.ts";
 import { type FileEntry } from "./fs.ts";
-import { collisionFiles, type CollisionMap, parseCollisionMap } from "./collision.ts";
+import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap } from "./collision.ts";
 import { collisionLoads } from "./analysis.ts";
 import { scriptHref } from "./view_script.tsx";
 import { tilemapHref } from "./view_tilemap.tsx";
@@ -77,7 +77,9 @@ const tileText = (map: CollisionMap, mode: Mode, k: number): string => {
 
 export const CollisionViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const files = useMemo(() => collisionFiles(rom.fs), [rom]);
-  const loads = collisionLoads(rom);
+  // スクリプトが読めない作品 (U3IJ) では、どこから読み込まれているかを探さない (一覧を薄くしない)
+  const scripted = isSupported(rom, "script");
+  const loads = scripted ? collisionLoads(rom) : new Map();
   const byID = (id: number | undefined) => files.find((f) => f.id === id);
   const [selected, setSelected] = useState<FileEntry>(byID(hashID("collision")) ?? files[0]);
   useHashID("collision", (id) => {
@@ -94,7 +96,7 @@ export const CollisionViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =>
       <ul class="sprite-list">
         {files.map((f) => (
           <li key={f.id} class={f === selected ? "selected" : ""} title={loads.has(f.id) ? "スクリプトから読み込まれている" : ""}>
-            <a href={collisionHref(f.id)} class={loads.has(f.id) ? "" : "dim"}>{collisionLabel(f.id, false)}</a>
+            <a href={collisionHref(f.id)} class={loads.has(f.id) || !scripted ? "" : "dim"}>{collisionLabel(f.id, false)}</a>
           </li>
         ))}
       </ul>
@@ -113,8 +115,9 @@ const CollisionView: FunctionComponent<{
   scale: number;
   setScale: (c: number) => void;
 }> = ({ rom, entry, mode, setMode, overlays, setOverlays, scale, setScale }) => {
-  const map = useMemo(() => parseCollisionMap(rom.data, entry), [rom, entry]);
-  const calls = collisionLoads(rom).get(map.id) ?? [];
+  const map = useMemo(() => parseCollisionMap(rom.data, entry, hasNavIslands(rom.id)), [rom, entry]);
+  const scripted = isSupported(rom, "script");
+  const calls = scripted ? collisionLoads(rom).get(map.id) ?? [] : [];
   const [hover, setHover] = useState<[number, number]>([-1, -1]);
   const [highlight, setHighlight] = useState<number | null>(null); // 凡例で選んだ値 (attr / occluder)
 
@@ -178,7 +181,7 @@ const CollisionView: FunctionComponent<{
           ["unk_0", map.unk_0],
           ["zones", map.zones.length],
           ["paths", map.paths.length],
-          ["navMesh", map.navMesh ? `${map.navMesh.length} islands` : "なし"],
+          ["navMesh", map.navMesh ? (!hasNavIslands(rom.id) ? "島に分けない" : `${map.navMesh.length} islands`) : "なし"],
           [
             "loaded by",
             calls.length > 0
@@ -197,7 +200,7 @@ const CollisionView: FunctionComponent<{
                   ))}
                 </span>
               )
-              : <span key="v" class="dim">スクリプトから定数で読み込んでいる箇所は見つかっていません</span>,
+              : <span key="v" class="dim">{scripted ? "スクリプトから定数で読み込んでいる箇所は見つかっていません" : "この ROM のスクリプトは読めないので探していません"}</span>,
           ],
         ]}
       />

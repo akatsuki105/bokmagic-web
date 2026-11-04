@@ -6,9 +6,9 @@ const GAME_IDS = ["U3IJ", "U32J", "U32J_rev1", "U33J"] as const; // U3IJ はボ�
 export type gameid = typeof GAME_IDS[number];
 
 // 作品ごとに、形式が違ってまだ読めないアセット (画面のタブ名・コマンドラインの種類名)
-// U3IJ は当たり判定・スクリプトの形式が違う (bokmagic の engine == 1 の分岐). マップの画面はスクリプトを読むので一緒に止める
+// U3IJ はスクリプトの形式が違う (bokmagic の engine == 1 の分岐). マップの画面はスクリプトを読むので一緒に止める
 const UNSUPPORTED: Partial<Record<gameid, readonly string[]>> = {
-  U3IJ: ["collision", "script", "map"],
+  U3IJ: ["script", "map"],
 };
 
 export const isSupported = (rom: ROMFile, kind: string): boolean => !UNSUPPORTED[rom.id]?.includes(kind);
