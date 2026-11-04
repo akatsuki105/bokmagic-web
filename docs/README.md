@@ -22,7 +22,8 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 ```
 
 - データを読む `.ts` は preact も decomp 由来の名前 (`generated/`) も import しない。名前を出すかどうかは画面側で決める (`index.tsx` の `setRom` で `setDecompGame` を呼ぶ)
-- `m4a/` (サウンド) と `bokcc/` (スクリプトの逆コンパイラ) は、ディレクトリの外を import しない独立したモジュール
+- `bokcc/` (スクリプトの逆コンパイラ) は、ディレクトリの外を import しない独立したモジュール
+- サウンドの `m4a/` は [m4a-web](https://github.com/akatsuki105/m4a-web) のものを `deno.jsonc` の `imports` で URL から読む (コミットで固定)
 
 ## タブとファイルの対応
 
@@ -39,7 +40,7 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 | Collision   | `view_collision.tsx` | `collision.ts`, `collision_overlay.tsx`                | [collision.md](rom/collision.md) |
 | Font        | `view_font.tsx`      | `font.ts`                                              | [font.md](rom/font.md)           |
 | Script      | `view_script.tsx`    | `script.ts`, `script_scan.ts`, `analysis.ts`, `bokcc/` | [script.md](rom/script.md)       |
-| Sound       | `view_sound.tsx`     | `m4a/`, `audio.ts`                                     | [sound.md](rom/sound.md)         |
+| Sound       | `view_sound.tsx`     | `m4a/` (m4a-web), `audio.ts`                           | [sound.md](rom/sound.md)         |
 
 共通のもの:
 

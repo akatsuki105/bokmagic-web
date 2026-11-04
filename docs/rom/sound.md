@@ -1,12 +1,12 @@
 # 曲 (m4a / MP2K)
 
-曲 (BGM, 効果音, ボイス) は任天堂の標準サウンドドライバ MP2K (m4a, いわゆる Sappy) のデータで入っている。ツールは `m4a/` のモジュールでシーケンスを再生し、PCM に書き出して WebAudio で鳴らす。 `m4a/` はディレクトリの外のファイルを import しないので、ほかの GBA ゲームの解析にもそのまま持っていける。それらしく鳴らす程度のもので、実機の出力とは一致しない (「再現していないもの」を参照)。
+曲 (BGM, 効果音, ボイス) は任天堂の標準サウンドドライバ MP2K (m4a, いわゆる Sappy) のデータで入っている。ツールは `m4a/` のモジュールでシーケンスを再生し、PCM に書き出して WebAudio で鳴らす。`m4a/` はこのリポジトリには置かず、[m4a-web](https://github.com/akatsuki105/m4a-web) の `m4a/` を `deno.jsonc` の `imports` で URL から読む (コミットを固定しているので、新しい版を使うときはそのコミットを書き換えて `deno.lock` を更新する)。それらしく鳴らす程度のもので、実機の出力とは一致しない (「再現していないもの」を参照)。
 
 ## ROM 上の位置
 
 - 曲テーブル gSongTable は U32J rev1 で `0x0825E56C` (decomp の `src/data/songs.s`)。8 バイト × 1000 曲で、直後の `0x082604AC` に dummy_song_header がある。
 - 曲ヘッダ, 音色 (voicegroup), 波形, シーケンスは `0x0852EFB8` (gSongHeaders) から後ろにある。
-- gFS は使わず、曲テーブルの位置はコードに直に書いてある (`view_sound.tsx` の `SONG_TABLE`)。U33J の位置は分かっていない。
+- gFS は使わず、曲テーブルの位置は `detectEngine` (`m4a/detect.ts`) で ROM から探す。U32J rev1 では `0x0825E56C`、U33J では `0x0826456C` が見つかる。
 
 ## 構造
 
@@ -109,6 +109,14 @@
 
 ## パースの手順
 
+ここに書くのは、`deno.jsonc` で固定しているコミットの m4a-web の `m4a/` の中身。
+
+### detect.ts (detectEngine)
+
+1. `m4aSongNumStart` の機械語 (先頭 0x1E バイト, ライブラリの作り方で 2 通り) を ROM から探す。
+2. その関数のリテラルプールにある gSongTable を読み、曲ヘッダへのポインタが並んでいるか確かめる。
+3. 少し手前の `m4aSoundInit` のリテラルプールから、`m4aSoundMode` に渡す値 (同時発音数, 音量, ミキサーの周波数, DAC のビット数, リバーブ)、MusicPlayer の数、gMPlayTable を読む。gSongTable は gMPlayTable のすぐ後ろに置かれる (gMPlayTable + 12 × MusicPlayer の数) ので、辻褄が合う並びを選ぶ。このゲームでは 3 つの ROM とも `m4aSoundMode(0x97FC00)` (12 音, 21024 Hz, 8 ビット) が見つかる。
+
 ### data.ts
 
 1. `readSongTable(rom, table, count?)`: 8 バイトずつ読む。count を省くと、ROM を指さない header に当たるか、テーブルより後ろにある曲ヘッダのうち一番手前の位置に着いたところで止める (U32J rev1 では dummy_song_header の手前、1000 曲)。
@@ -136,16 +144,19 @@
 1. **音量** (`volumes`, `ChnVolSetAsm`): 右 = velocity × (128 + rhythmPan) × volMR >> 14、左 = velocity × (127 - rhythmPan) × volML >> 14 (最大 255)。
 2. **DirectSound のエンベロープ** (`frameDirect`, 1フレームごと, `SoundMainRAM` の処理と同じ順): attack は env += attack で 255 になったら decay へ。decay は env = env × decay >> 8 で sustain 以下になったら sustain (sustain が 0 ならエコーへ)。release は env = env × release >> 8 でエコー音量以下になったらエコーへ。エコーは音量か長さが 0 なら止め、そうでなければエコー音量のまま長さのフレーム数だけ鳴らす。
 3. **CGB のエンベロープ** (`frameCgb`): 目標の音量 = (右 + 左) >> 4 (最大 15, `CgbModVol`)、sustain の目標 = (目標 × sustain + 15) >> 4。attack / decay / release の下位3ビットを待ちフレーム数にして1ずつ増減する。実機のレジスタのエンベロープを真似ただけの近似。
-4. **DirectSound の音程** (`rate`, `MidiKeyToFreq`): キー = 鳴らすキー + keyM、端数 = pitM / 256。キー 60 で wav.freq / 1024 Hz、半音ごとに 2^(1/12) 倍 (キーは 0-178 に切る)。FIX の音色は `SoundMainRAM` と同じく、出力1サンプルごとに波形を1サンプル進める (ミキサーのサンプリング周波数 `mixerRate` で鳴る)。`mixerRate` は `PlayerOptions` / `RenderOptions` で渡し、既定は m4a の SoundInit と同じ 13379 Hz。このゲームでは Sound タブが 21024 Hz (`m4aSoundMode(0x97FC00)`) を渡す。
+4. **DirectSound の音程** (`rate`, `MidiKeyToFreq`): キー = 鳴らすキー + keyM、端数 = pitM / 256。キー 60 で wav.freq / 1024 Hz、半音ごとに 2^(1/12) 倍 (キーは 0-178 に切る)。FIX の音色は `SoundMainRAM` と同じく、出力1サンプルごとに波形を1サンプル進める (ミキサーのサンプリング周波数 `mixerRate` で鳴る)。`mixerRate` は `PlayerOptions` / `RenderOptions` で渡し、既定は m4a の SoundInit と同じ 13379 Hz。Sound タブは `detectEngine` が読んだ値を渡す (このゲームは `m4aSoundMode(0x97FC00)` で 21024 Hz)。
 5. **矩形波・波形メモリの音程** (`MidiKeyToCgbFreq`): gCgbFreqTable (C から1オクターブ分) を `>> オクターブ` して端数で補間し、GB の周波数レジスタ値 x (0-2047) を作る。矩形波は 131072 / (2048 - x) Hz、波形メモリは 32 サンプルで1周なので 65536 / (2048 - x) Hz (実機と同じく、同じキーの矩形波より1オクターブ低い)。キー 35 以下は 0 に、36 から数える。
 6. **ノイズ** (`MidiKeyToCgbFreq` の chanNum 4): キー 21 からの gNoiseTable で NR43 の値を引き、524288 / r / 2^(s + 1) 回/秒 (r = 0 は 0.5 とみなす) で 15 ビットの LFSR を回す。wav の bit0 が立っていれば 7 ビットの周期にする。
 7. **書き出し** (`mix`): DirectSound は、音程を変える音色は隣のサンプルとの間を線形補間し (`SoundMainRAM` と同じ)、FIX の音色は補間しない。ループ無しの波形は終わりで止める。矩形波はデューティ比 (12.5 / 25 / 50 / 75 %)、波形メモリは 4 ビット値を -1..1 にして鳴らす。CGB は左右どちらかが半分以下なら片側だけにする (`CgbPan`)。CGB の音の最大は DirectSound の最大の 0.25 倍 (`CGB_AMP`, 決め打ち)。
+8. **矩形波1のスイープ**: `ply_note` が pan_sweep から NR10 の値を決め (bit7 が立っているか、間隔のビットが 0 なら 0x08 = スイープしない)、鳴らし始めに `CgbSound` が NR10 に書く。ツールは GB と同じく 128 Hz で数え、間隔ごとに周波数レジスタ x を x ± (x >> シフト) にする。上げていって 2047 を超えたら音を止める。
 
 ### render.ts (renderSong)
 
 1. 1 フレームは 16777216 / 280896 Hz (約 59.73 Hz, `FRAME_RATE`)。フレームごとに `player.frame()` し、そのフレーム分のサンプル (sampleRate / FRAME_RATE, 端数は持ち越す) を `player.mix()` で書く。
 2. GOTO で戻った回数 (どれかのトラックの gotoCount の最大) が `loops` (既定 1) になったら、`fadeSeconds` (既定 4 秒) で直線にフェードアウトして終える。全トラックが FINE で終わって音も消えたらそこで終える。最長 `maxSeconds` (既定 600 秒)。
 3. 既定は 44100 Hz, gain 0.8, DirectSound の同時発音数 12。最後に -1..1 に切る。
+4. **リバーブ** (`SoundMainRAM` の applyReverb): 実機のミキサーは pcmDmaPeriod (= 1584 ÷ 1 フレームのサンプル数, 21024 Hz なら 4) フレーム分のリングバッファに書く。フレームごとに混ぜる前に、そのフレームの場所を (pcmDmaPeriod フレーム前の左 + 右 + pcmDmaPeriod - 1 フレーム前の左 + 右) × reverb / 512 で埋める (左右とも同じ値)。強さは、曲ヘッダの reverb の bit7 が立っていればその値 (`MPlayStart` が `m4aSoundMode` を呼ぶ)、立っていなければ `m4aSoundMode` の値 (`RenderOptions.reverb`)。PCM バッファに入るのは DirectSound だけなので CGB には掛けない。リバーブを掛けるときは、鳴り終わってから遅れの 8 回分だけ書き足して響きを残す。
+5. `measureSong` は音を作らずにシーケンスだけ進め、`renderSong` で書き出したときの長さを返す。
 
 ### wav.ts
 
@@ -154,8 +165,7 @@
 ### 再現していないもの
 
 - ミキサーのサンプリング周波数: 実機はこのゲームでは 21024 Hz (`m4aSoundInit` の `m4aSoundMode(0x97FC00)`) で、8 ビットに丸めて出す。ツールは 44100 Hz の浮動小数で書き出す (FIX の音色の速さには `mixerRate` を使う)。
-- リバーブ (曲ヘッダの reverb もサウンドモードのものも)。
-- 矩形波1のスイープ (pan_sweep) と CGB の音の長さ (length)。
+- CGB の音の長さ (length)。
 - 優先度によるチャンネルの割り当て (PRIO と曲の priority は読み捨てる)、マスター音量、MusicPlayer どうしの関係 (効果音とBGMの同時再生)。
 - PORT (サウンドレジスタへの直接書き込み) は引数を読み飛ばすだけ。
 - gMPlayMemAccArea: 実機では全 MusicPlayer で共有で曲をまたいで残るが、ツールは曲ごとに 0 で始める。
@@ -163,9 +173,9 @@
 
 ## 表示での扱い
 
-- Sound タブ (`view_sound.tsx`): 曲テーブルの位置は `SONG_TABLE` に U32J rev1 (`0x0825E56C`) だけを持つ。ほかの ROM では「曲テーブルの位置は分かっていません」と出す。
+- Sound タブ (`view_sound.tsx`): ROM を開くと `detectEngine` で曲テーブルと `m4aSoundMode` の値を探し、ミキサーの周波数・同時発音数・リバーブの既定値を書き出しに渡す。見つからなければ「m4a のサウンドドライバが見つかりませんでした」と出す。
 - 左に曲の一覧を出す。名前は `generated/names.ts` の SONG_NAMES (decomp の `include/constants/songs.h` から作る, U32J rev1 のときだけ)。トラックが 0 の曲は薄く出す。選んでいる曲は URL の `#sound/0xXXXX` (曲番号) に入れる。
-- 右に header, tracks, voicegroup, priority, reverb (bit7 が立っているときだけ), player (ms) を出す。
+- 右に header, tracks, voicegroup, priority, reverb (bit7 が立っていなければ ROM の既定値), player (ms) を出す。
 - 「再生」を押したときに初めて `renderSong` で曲全体を PCM にし (同期処理)、`AudioBufferSourceNode` で鳴らす。一時停止、停止、シークバー (位置を変えると、その位置から鳴らし直す)、WAV で保存がある。
 - 「ループ」(1-9) は renderSong の loops で、変えると書き出し直す。「繰り返し再生」は書き出した PCM を最後まで鳴らしたら頭から鳴らし直すもの (`AudioBufferSourceNode.loop`) で、曲データのループとは別。曲を切り替えても保つ。
 - `audio.ts`: アプリ全体で1つの AudioContext と、その出口の GainNode (全体の音量) を持つ。AudioContext は初めて鳴らすときに作る (ブラウザはユーザー操作の前に鳴らさない)。音量は localStorage (`bokmagic-web.volume`, 既定 0.8) に保存し、ヘッダの `VolumeControl` で変える。
@@ -180,4 +190,4 @@
 
 ## 未解明
 
-- U33J の曲テーブルの位置。
+- なし (U33J の曲テーブルの位置は `detectEngine` で見つかるようになった)。

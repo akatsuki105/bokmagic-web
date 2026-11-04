@@ -4,12 +4,12 @@
     "jsxImportSource": "preact"
   },
   "imports": {
-    "preact": "npm:preact@^10"
+    "preact": "npm:preact@^10",
+    // サウンド再生ロジックは m4a-web (https://github.com/akatsuki105/m4a-web) のを使う
+    "m4a/": "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/"
   },
   "fmt": {
-    "options": {
-      "lineWidth": 1000 // I hate line wrapping
-    },
+    "lineWidth": 1000, // I hate line wrapping
     "exclude": ["bokcc/"] // boktai2 decomp からのコピーなので手を入れない
   },
   "lint": {

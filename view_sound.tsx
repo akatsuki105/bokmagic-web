@@ -1,22 +1,22 @@
 // 曲 (BGM, 効果音, ボイス) のタブ
-// 曲テーブル (gSongTable) を読み、選んだ曲を m4a/ で PCM に書き出して WebAudio で鳴らす
+// 曲テーブル (gSongTable) を読み、選んだ曲を m4a/ (m4a-web のもの, deno.jsonc の imports) で PCM に書き出して WebAudio で鳴らす
 
 import { FunctionComponent } from "preact";
 import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
-import { encodeWav, readSongHeader, readSongTable, type Rendered, renderSong, type SongEntry } from "./m4a/mod.ts";
+import { detectEngine, encodeWav, type Engine, readSongHeader, readSongTable, type Rendered, type RenderOptions, renderSong, type SongEntry } from "m4a/mod.ts";
 import { SONG_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { Desc, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
 import { audioOutput, useVolume } from "./audio.ts";
 
-// gSongTable の GBA アドレス
-const SONG_TABLE: Partial<Record<ROMFile["id"], number>> = {
-  U32J_rev1: 0x0825E56C,
-};
-
-// ミキサーのサンプリング周波数: m4aSoundInit が m4aSoundMode(0x97FC00) で SOUND_MODE_FREQ_21024 にする
-const MIXER_RATE = 21024;
+// 曲テーブルの位置と m4aSoundMode の値 (ミキサーの周波数・同時発音数・リバーブ) は ROM から探す
+// U32J rev1 では gSongTable = 0x0825E56C, m4aSoundMode(0x97FC00) (12 音, 21024 Hz) が見つかる
+const playOptions = (e: Engine): RenderOptions => ({
+  mixerRate: e.soundMode?.mixerRate,
+  maxDirectVoices: e.soundMode?.maxChans,
+  reverb: e.soundMode && e.soundMode.reverb & 0x80 ? e.soundMode.reverb & 0x7F : 0, // 曲ヘッダがリバーブを指定していないときの値
+});
 
 const songLabel = (index: number) => {
   const name = decomp(SONG_NAMES)[index];
@@ -37,7 +37,8 @@ export const VolumeControl: FunctionComponent = () => {
 };
 
 export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
-  const table = SONG_TABLE[rom.id];
+  const engine = useMemo(() => detectEngine(rom.data), [rom]);
+  const table = engine?.songTable;
   const songs = useMemo(() => (table === undefined ? [] : readSongTable(rom.data, table)), [rom, table]);
   const empty = useMemo(() => new Set(songs.filter((s) => readSongHeader(rom.data, s.header).trackCount === 0).map((s) => s.index)), [rom, songs]);
   const [selected, setSelected] = useState<SongEntry | undefined>(songs[hashID("sound") ?? 1] ?? songs[0]);
@@ -46,7 +47,7 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   });
   const [repeat, setRepeat] = useState(false); // 繰り返し再生 (曲を切り替えても保つ)
 
-  if (table === undefined) return <p>この ROM ({rom.id}) の曲テーブルの位置は分かっていません</p>;
+  if (!engine) return <p>この ROM ({rom.id}) では m4a のサウンドドライバが見つかりませんでした</p>;
 
   return (
     <div class="viewer">
@@ -57,7 +58,7 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           </li>
         ))}
       </ul>
-      {selected && <SongView key={selected.index} rom={rom} song={selected} repeat={repeat} setRepeat={setRepeat} />}
+      {selected && <SongView key={selected.index} rom={rom} song={selected} opts={playOptions(engine)} repeat={repeat} setRepeat={setRepeat} />}
     </div>
   );
 };
@@ -65,7 +66,7 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
 const formatTime = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 
 // repeat: 書き出した PCM の最後まで来たら最初から鳴らし直す (曲データのループとは別)
-const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boolean; setRepeat: (v: boolean) => void }> = ({ rom, song, repeat, setRepeat }) => {
+const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderOptions; repeat: boolean; setRepeat: (v: boolean) => void }> = ({ rom, song, opts, repeat, setRepeat }) => {
   const header = useMemo(() => readSongHeader(rom.data, song.header), [rom, song]);
   const [loops, setLoops] = useState(1);
   const [rendered, setRendered] = useState<Rendered | null>(null);
@@ -95,7 +96,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
   }, [playing]);
 
   const render = () => {
-    const r = renderSong(rom.data, song.header, { loops, mixerRate: MIXER_RATE });
+    const r = renderSong(rom.data, song.header, { ...opts, loops });
     setRendered(r);
     return r;
   };
@@ -174,7 +175,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
     ["tracks", header.trackCount],
     ["voicegroup", hex8(header.voicegroup)],
     ["priority", header.priority],
-    ["reverb", header.reverb & 0x80 ? header.reverb & 0x7F : "-"],
+    ["reverb", header.reverb & 0x80 ? header.reverb & 0x7F : `${opts.reverb} (ROM の既定)`],
     ["player", song.ms],
   ];
 
@@ -208,7 +209,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
             <span class="mono">{formatTime(pos)} / {rendered ? formatTime(duration) : "-:--"}</span>
           </div>
           {rendered?.looped && <p>{loops} 回ループしたところでフェードアウトします</p>}
-          <p class="dim">ループは GOTO で戻った回数です。実機のミキサーやリバーブは再現しておらず、それらしく鳴らす程度です。</p>
+          <p class="dim">ループは GOTO で戻った回数です。リバーブは実機と同じ仕組みで掛けますが、実機のミキサー (低い周波数で混ぜて 8 ビットに落とすこと) は再現しておらず、実機より澄んだ音になります。</p>
         </>
       )}
       <InfoTable rows={info} />

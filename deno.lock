@@ -68,6 +68,15 @@
       "integrity": "sha512-DCHYrK/B10yUD3ZjLfhZ3WIE/9Vf9VFUODcRE2dRomTYDpJk6z6L9wecSfhfE6M9ZTHUdyQkoC46arIDhEV84Q=="
     }
   },
+  "remote": {
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/data.ts": "b8ba00b333d6fe323dd29428687ad3bb37f4255ec5131cde68eb545bbf89883e",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/detect.ts": "2b586802baa9c2e9bcd3b4c389112db1f3865f5e0aaae038c3aa901320c140b4",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/mod.ts": "c46d65d405c3c50ee560ff77e251a87b87d4dd06dc448b658aad4313e4b83d41",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/player.ts": "d129834a005ec59242e7cbf4cffcd5bd323dcf70c44ba14df6d31120ed1537cb",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/render.ts": "a9dd9e339ea20f5021c9a49fb00e0ad37612ef6a588e39c28189bba0e5808e0f",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/synth.ts": "208be3cb3558ba025ef34412397b9bd1cb87b3405c680c9da61b0204fd4a3d5c",
+    "https://raw.githubusercontent.com/akatsuki105/m4a-web/cbbb6e10b00f301b28ef2f4bcb3c5afa71bd9406/m4a/wav.ts": "3940cef95f8e4e03925376973265756f6b9dbf4aece37685c51d0c22d0a730e9"
+  },
   "workspace": {
     "dependencies": [
       "npm:preact@10"

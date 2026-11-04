@@ -1,1 +1,2 @@
 deno.lock linguist-generated=true
+generated/* linguist-generated=true
