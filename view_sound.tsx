@@ -7,7 +7,7 @@ import type { ROMFile } from "./rom.ts";
 import { detectEngine, encodeWav, type Engine, readSongHeader, readSongTable, type Rendered, type RenderOptions, renderSong, type SongEntry } from "m4a/mod.ts";
 import { SONG_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
+import { AssetView, Card, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
 import { audioOutput, useVolume } from "./audio.ts";
 
 // 曲テーブルの位置と m4aSoundMode の値 (ミキサーの周波数・同時発音数・リバーブ) は ROM から探す
@@ -180,14 +180,29 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
   ];
 
   return (
-    <div class="sprite-view">
-      <h2>{songLabel(song.index)}</h2>
-      <Desc text={desc} />
-      {header.trackCount === 0 ? <p class="dim">トラックが無い曲です</p> : (
+    <AssetView
+      title={songLabel(song.index)}
+      desc={desc}
+      stage={header.trackCount === 0 ? <p class="dim">トラックが無い曲です</p> : (
         <>
+          <div class="player">
+            <div class="controls">
+              <button type="button" class="play" onClick={() => (playing ? pause() : start(pos))}>{playing ? "一時停止" : "再生"}</button>
+              <button type="button" onClick={stop} disabled={!playing && pos === 0}>停止</button>
+              <span class="mono">{formatTime(pos)} / {rendered ? formatTime(duration) : "-:--"}</span>
+            </div>
+            <div class="controls seek">
+              <input type="range" min={0} max={duration || 1} step={0.01} value={pos} disabled={!rendered} onInput={(e) => seek(Number(e.currentTarget.value))} />
+            </div>
+            {rendered?.looped && <p>{loops} 回ループしたところでフェードアウトします</p>}
+          </div>
+          <p class="desc">ループは GOTO で戻った回数です。リバーブは実機と同じ仕組みで掛けますが、実機のミキサー (低い周波数で混ぜて 8 ビットに落とすこと) は再現しておらず、実機より澄んだ音になります。</p>
+        </>
+      )}
+    >
+      {header.trackCount > 0 && (
+        <Card title="再生">
           <div class="controls">
-            <button type="button" onClick={() => (playing ? pause() : start(pos))}>{playing ? "一時停止" : "再生"}</button>
-            <button type="button" onClick={stop} disabled={!playing && pos === 0}>停止</button>
             <NumberStepper
               label="ループ"
               value={loops}
@@ -202,17 +217,15 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
             <label>
               <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.currentTarget.checked)} /> 繰り返し再生
             </label>
+          </div>
+          <div class="controls">
             <button type="button" onClick={download}>WAV で保存</button>
           </div>
-          <div class="controls seek">
-            <input type="range" min={0} max={duration || 1} step={0.01} value={pos} disabled={!rendered} onInput={(e) => seek(Number(e.currentTarget.value))} />
-            <span class="mono">{formatTime(pos)} / {rendered ? formatTime(duration) : "-:--"}</span>
-          </div>
-          {rendered?.looped && <p>{loops} 回ループしたところでフェードアウトします</p>}
-          <p class="dim">ループは GOTO で戻った回数です。リバーブは実機と同じ仕組みで掛けますが、実機のミキサー (低い周波数で混ぜて 8 ビットに落とすこと) は再現しておらず、実機より澄んだ音になります。</p>
-        </>
+        </Card>
       )}
-      <InfoTable rows={info} />
-    </div>
+      <Card title="情報">
+        <InfoTable rows={info} />
+      </Card>
+    </AssetView>
   );
 };

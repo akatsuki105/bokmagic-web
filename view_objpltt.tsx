@@ -7,7 +7,7 @@ import type { ObjPltt } from "./objpltt.ts";
 import type { ROMFile } from "./rom.ts";
 import { parseMainSprite } from "./sprite_main.ts";
 import { parseAuxSprites } from "./sprite_aux.ts";
-import { ColorTable, hex4, InfoTable, NumberStepper, Swatches } from "./components.tsx";
+import { AssetView, Card, ColorTable, hex4, InfoTable, NumberStepper, Swatches } from "./components.tsx";
 import { SPRITE_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { mainSpriteHref } from "./view_main.tsx";
@@ -60,30 +60,33 @@ export const ObjPaletteViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) =
 };
 
 const PaletteDetail: FunctionComponent<{ pltt: ObjPltt; plttID: number; users: User[]; onChange: (id: number) => void }> = ({ pltt, plttID, users, onChange }) => (
-  <div class="sprite-view">
-    <h2>OBJ plttID {plttID}</h2>
-    <div class="controls">
-      <NumberStepper label="plttID" value={plttID} min={0} max={pltt.length - 1} onChange={onChange} />
-    </div>
-    <ColorTable raw={pltt.raw} colors={pltt.colors} start={plttID * 16} note0="OBJ では透明" />
-    <InfoTable
-      rows={[
-        ["ObjPlttFile", `${pltt.length} palettes`],
-        ["unk_02", hex4(pltt.unk_02)],
-        ["offset", `${hex4(plttID * 32)} (gObjPlttData)`],
-      ]}
-    />
-    <h3>used by</h3>
-    {users.length > 0
-      ? (
-        <ul class="pltt-users">
-          {users.map((u) => (
-            <li key={`${u.kind}${u.id}`}>
-              <a href={userHref(u)}>{spriteName(u.id)}</a>
-            </li>
-          ))}
-        </ul>
-      )
-      : <p>スプライトの既定のパレットとしては使われていません (ゲーム中で plttID を指定して使うものはここに出ません)</p>}
-  </div>
+  <AssetView title={`OBJ plttID ${plttID}`} stage={<ColorTable raw={pltt.raw} colors={pltt.colors} start={plttID * 16} note0="OBJ では透明" />}>
+    <Card title="表示">
+      <div class="controls">
+        <NumberStepper label="plttID" value={plttID} min={0} max={pltt.length - 1} onChange={onChange} />
+      </div>
+    </Card>
+    <Card title="使っているスプライト">
+      {users.length > 0
+        ? (
+          <ul class="pltt-users">
+            {users.map((u) => (
+              <li key={`${u.kind}${u.id}`}>
+                <a href={userHref(u)}>{spriteName(u.id)}</a>
+              </li>
+            ))}
+          </ul>
+        )
+        : <p>スプライトの既定のパレットとしては使われていません (ゲーム中で plttID を指定して使うものはここに出ません)</p>}
+    </Card>
+    <Card title="情報">
+      <InfoTable
+        rows={[
+          ["ObjPlttFile", `${pltt.length} palettes`],
+          ["unk_02", hex4(pltt.unk_02)],
+          ["offset", `${hex4(plttID * 32)} (gObjPlttData)`],
+        ]}
+      />
+    </Card>
+  </AssetView>
 );

@@ -10,7 +10,7 @@ import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
 import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, flagNames, hashID, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+import { AssetView, Card, flagNames, hashID, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, StageTitle, useFrameLoop, useHashID } from "./components.tsx";
 
 export const auxSpriteHref = (id: number) => `#aux/${hex4(id)}`;
 
@@ -57,57 +57,71 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
   };
 
   return (
-    <div class="sprite-view">
-      <h2>{spriteLabel(gfx.id, false)}</h2>
-      <Desc text={spriteDesc(gfx.id)} />
-      <div class="controls">
-        <NumberStepper label="pose" value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} />
-        <PlttControl value={plttID} defaultValue={gfx.plttID} pltt={pltt} onChange={setPlttID} />
-        <label>
-          scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-        </label>
-        <label>
-          <input type="checkbox" checked={xflip} disabled={animActive} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
-        </label>
-        <label>
-          <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
-        </label>
-      </div>
-      <AuxAnimPanel
-        refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
-        poseCount={gfx.poseCount}
-        poseLimit={gfx.poses.length}
-        animFiles={animFiles}
-        active={animActive}
-        setActive={setAnimActive}
-        onPose={(i, x, y) => {
-          setPoseIdx(i);
-          setXflip(x);
-          setYflip(y);
-        }}
-      />
-      <SpriteCanvas rendered={rendered} scale={scale} origin />
-      <div class="pltts">
-        <PaletteRow pltt={pltt} plttID={plttID} />
-      </div>
-      <InfoTable
-        rows={[
-          ["poses", `${gfx.poseCount} (+${gfx.poses.length - gfx.poseCount} after this entry)`],
-          ["size", `${gfx.pw}x${gfx.ph}`],
-          ["offset", `(${gfx.px}, ${gfx.py})`],
-          ["plttID", gfx.plttID],
-          ...(pose
-            ? [
-              ["pose", `#${poseIdx}${poseIdx >= gfx.poseCount ? " (後ろのエントリのポーズ)" : ""}`],
-              ["subsprites", pose.subsprites.length],
-              ["pose tiles", `${pose.tileCount} (from ${pose.tileNum})`],
-              ["pose plttID", pose.plttID],
-            ] as [string, string | number][]
-            : []),
-        ]}
-      />
-      <PoseGrid count={gfx.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
-    </div>
+    <AssetView
+      title={spriteLabel(gfx.id, false)}
+      desc={spriteDesc(gfx.id)}
+      stage={
+        <>
+          <SpriteCanvas rendered={rendered} scale={scale} origin />
+          <div class="pltts">
+            <PaletteRow pltt={pltt} plttID={plttID} />
+          </div>
+          <StageTitle>ポーズ ({gfx.poseCount})</StageTitle>
+          <PoseGrid count={gfx.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
+        </>
+      }
+    >
+      <Card title="表示">
+        <div class="controls">
+          <NumberStepper label="pose" value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} />
+          <PlttControl value={plttID} defaultValue={gfx.plttID} pltt={pltt} onChange={setPlttID} />
+        </div>
+        <div class="controls">
+          <label>
+            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
+          </label>
+          <label>
+            <input type="checkbox" checked={xflip} disabled={animActive} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
+          </label>
+          <label>
+            <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
+          </label>
+        </div>
+      </Card>
+      <Card title="アニメ">
+        <AuxAnimPanel
+          refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
+          poseCount={gfx.poseCount}
+          poseLimit={gfx.poses.length}
+          animFiles={animFiles}
+          active={animActive}
+          setActive={setAnimActive}
+          onPose={(i, x, y) => {
+            setPoseIdx(i);
+            setXflip(x);
+            setYflip(y);
+          }}
+        />
+      </Card>
+      <Card title="情報">
+        <InfoTable
+          rows={[
+            ["poses", `${gfx.poseCount} (+${gfx.poses.length - gfx.poseCount} after this entry)`],
+            ["size", `${gfx.pw}x${gfx.ph}`],
+            ["offset", `(${gfx.px}, ${gfx.py})`],
+            ["plttID", gfx.plttID],
+            ...(pose
+              ? [
+                ["pose", `#${poseIdx}${poseIdx >= gfx.poseCount ? " (後ろのエントリのポーズ)" : ""}`],
+                ["subsprites", pose.subsprites.length],
+                ["pose tiles", `${pose.tileCount} (from ${pose.tileNum})`],
+                ["pose plttID", pose.plttID],
+              ] as [string, string | number][]
+              : []),
+          ]}
+        />
+      </Card>
+    </AssetView>
   );
 };
 

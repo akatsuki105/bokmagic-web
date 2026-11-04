@@ -10,7 +10,7 @@ import { OBJ_SIZE, renderObjs } from "./render.ts";
 import { AuxAnimPanel } from "./view_aux.tsx";
 import { PARTICLE_ANIM_REFS, PARTICLE_GROUP_NAMES, PARTICLE_PLTT_REFS, PARTICLE_POSE_NAMES } from "./generated/particle_refs.ts";
 import { decomp } from "./decomp.ts";
-import { Desc, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas } from "./components.tsx";
+import { AssetView, Card, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, StageTitle } from "./components.tsx";
 
 const groupLabel = (id: number, withDesc = true) => {
   const name = decomp(PARTICLE_GROUP_NAMES)[id];
@@ -64,58 +64,72 @@ const ParticleView: FunctionComponent<{ file: ParticleFile; group: ParticleGroup
   };
 
   return (
-    <div class="sprite-view">
-      <h2>{groupLabel(group.id, false)}</h2>
-      <Desc text={decomp(PARTICLE_GROUP_NAMES)[group.id]?.[1]} />
-      <div class="controls">
-        <NumberStepper label="pose" value={poseIdx} min={0} max={group.poseLimit - 1} onChange={setPose} />
-        <PlttControl value={plttID} defaultValue={group.plttID} pltt={pltt} onChange={setPlttID} />
-        {plttRefs.map(([id, where]) => (
-          <button type="button" key={id} title={`Particle_SetPltt: ${where}`} onClick={() => setPlttID(id)}>
-            plttID {id} (ソース)
-          </button>
-        ))}
-        <label>
-          scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-        </label>
-        <label>
-          <input type="checkbox" checked={xflip} disabled={animActive} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
-        </label>
-        <label>
-          <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
-        </label>
-      </div>
-      <AuxAnimPanel
-        refs={decomp(PARTICLE_ANIM_REFS)[group.id] ?? []}
-        poseCount={group.poseCount}
-        poseLimit={group.poseLimit}
-        particle
-        animFiles={animFiles}
-        active={animActive}
-        setActive={setAnimActive}
-        onPose={(i, x, y) => {
-          setPoseIdx(i);
-          setXflip(x);
-          setYflip(y);
-        }}
-      />
-      <SpriteCanvas rendered={rendered} scale={scale} />
-      <div class="pltts">
-        <PaletteRow pltt={pltt} plttID={plttID} />
-      </div>
-      <InfoTable
-        rows={[
-          ["file", hex4(file.id)],
-          ["size", `${w}x${h}, ${group.flags & PGFLAG_BPP8 ? "8bpp" : "4bpp"}`],
-          ["tile", group.tile],
-          ["poses", `${group.poseCount} (+${group.poseLimit - group.poseCount} after this group)`],
-          ["plttID", group.plttID],
-          ["pose", `#${poseIdx}${poseIdx >= group.poseCount ? " (後ろのグループのタイル)" : ""}`],
-          ["pose tile", poseIdx * (w / 8) * (h / 8) + group.tile],
-          ...(name ? [["pose name", name[1] ? `${name[0]} (${name[1]})` : name[0]] as [string, string]] : []),
-        ]}
-      />
-      <PoseGrid count={group.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
-    </div>
+    <AssetView
+      title={groupLabel(group.id, false)}
+      desc={decomp(PARTICLE_GROUP_NAMES)[group.id]?.[1]}
+      stage={
+        <>
+          <SpriteCanvas rendered={rendered} scale={scale} />
+          <div class="pltts">
+            <PaletteRow pltt={pltt} plttID={plttID} />
+          </div>
+          <StageTitle>ポーズ ({group.poseCount})</StageTitle>
+          <PoseGrid count={group.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
+        </>
+      }
+    >
+      <Card title="表示">
+        <div class="controls">
+          <NumberStepper label="pose" value={poseIdx} min={0} max={group.poseLimit - 1} onChange={setPose} />
+          <PlttControl value={plttID} defaultValue={group.plttID} pltt={pltt} onChange={setPlttID} />
+          {plttRefs.map(([id, where]) => (
+            <button type="button" key={id} title={`Particle_SetPltt: ${where}`} onClick={() => setPlttID(id)}>
+              plttID {id} (ソース)
+            </button>
+          ))}
+        </div>
+        <div class="controls">
+          <label>
+            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
+          </label>
+          <label>
+            <input type="checkbox" checked={xflip} disabled={animActive} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
+          </label>
+          <label>
+            <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
+          </label>
+        </div>
+      </Card>
+      <Card title="アニメ">
+        <AuxAnimPanel
+          refs={decomp(PARTICLE_ANIM_REFS)[group.id] ?? []}
+          poseCount={group.poseCount}
+          poseLimit={group.poseLimit}
+          particle
+          animFiles={animFiles}
+          active={animActive}
+          setActive={setAnimActive}
+          onPose={(i, x, y) => {
+            setPoseIdx(i);
+            setXflip(x);
+            setYflip(y);
+          }}
+        />
+      </Card>
+      <Card title="情報">
+        <InfoTable
+          rows={[
+            ["file", hex4(file.id)],
+            ["size", `${w}x${h}, ${group.flags & PGFLAG_BPP8 ? "8bpp" : "4bpp"}`],
+            ["tile", group.tile],
+            ["poses", `${group.poseCount} (+${group.poseLimit - group.poseCount} after this group)`],
+            ["plttID", group.plttID],
+            ["pose", `#${poseIdx}${poseIdx >= group.poseCount ? " (後ろのグループのタイル)" : ""}`],
+            ["pose tile", poseIdx * (w / 8) * (h / 8) + group.tile],
+            ...(name ? [["pose name", name[1] ? `${name[0]} (${name[1]})` : name[0]] as [string, string]] : []),
+          ]}
+        />
+      </Card>
+    </AssetView>
   );
 };

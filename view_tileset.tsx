@@ -6,7 +6,7 @@ import type { ROMFile } from "./rom.ts";
 import { parseTileSets, type TileSet } from "./tileset.ts";
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { renderTileGrid } from "./render.ts";
-import { type BgPlttChoice, bgPlttColors, BgPlttSelect, hex4, InfoTable, NumberStepper, SpriteCanvas } from "./components.tsx";
+import { AssetView, type BgPlttChoice, bgPlttColors, BgPlttSelect, Card, hex4, InfoTable, NumberStepper, SpriteCanvas } from "./components.tsx";
 
 export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs, rom.id), [rom]);
@@ -45,10 +45,7 @@ export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           ))}
         </ul>
       </div>
-      <div class="sprite-view">
-        <h2>
-          part {hex4(ts.parts[partIdx].id)} (#{partIdx})
-        </h2>
+      <PartView ts={ts} partIdx={partIdx} colors={colors} cols={cols} scale={scale} grid={grid} transparent0={transparent0}>
         <div class="controls">
           <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} />
         </div>
@@ -57,6 +54,8 @@ export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           <label>
             scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
           </label>
+        </div>
+        <div class="controls">
           <label>
             <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
           </label>
@@ -64,13 +63,13 @@ export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
             <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
           </label>
         </div>
-        <PartView ts={ts} partIdx={partIdx} colors={colors} cols={cols} scale={scale} grid={grid} transparent0={transparent0} />
-      </div>
+      </PartView>
     </div>
   );
 };
 
-const PartView: FunctionComponent<{ ts: TileSet; partIdx: number; colors: Uint32Array; cols: number; scale: number; grid: boolean; transparent0: boolean }> = ({ ts, partIdx, colors, cols, scale, grid, transparent0 }) => {
+// children: 表示の操作 (右の欄の「表示」のカードに入れる)
+const PartView: FunctionComponent<{ ts: TileSet; partIdx: number; colors: Uint32Array; cols: number; scale: number; grid: boolean; transparent0: boolean }> = ({ ts, partIdx, colors, cols, scale, grid, transparent0, children }) => {
   const part = ts.parts[partIdx];
   const rendered = useMemo(() => renderTileGrid(ts.tiles, part.refs, cols, colors, transparent0), [ts, part, cols, colors, transparent0]);
   const [hover, setHover] = useState(-1); // マウスの下にある、部品の中で何枚目のタイルか
@@ -87,21 +86,25 @@ const PartView: FunctionComponent<{ ts: TileSet; partIdx: number; colors: Uint32
   }
 
   return (
-    <>
-      <p class="mono hover-line">{hover >= 0 && `#${hover} (読み込み先の先頭 + ${hover}) → tiles[${part.refs[hover]}]`}</p>
-      <SpriteCanvas rendered={rendered} scale={scale} grid={grid ? 8 : undefined} onHover={onHover} />
-      <InfoTable
-        rows={[
-          ["part tiles", part.tileCount],
-          ["startIndex", `${hex4(part.startIndex)} (refs[${part.startIndex / 2}])`],
-          ["refs", `tiles[${min}..${max}]`],
-          ["TileSetFile", hex4(ts.id)],
-          ["parts", ts.parts.length],
-          ["all refs", ts.refCount],
-          ["all tiles", ts.tiles.length / 32],
-          ["unk", ts.unk],
-        ]}
-      />
-    </>
+    <AssetView title={`part ${hex4(part.id)} (#${partIdx})`} stage={<SpriteCanvas rendered={rendered} scale={scale} grid={grid ? 8 : undefined} onHover={onHover} />}>
+      <Card title="表示">{children}</Card>
+      <Card title="カーソル">
+        <p class="mono hover-line">{hover >= 0 && `#${hover} (読み込み先の先頭 + ${hover}) → tiles[${part.refs[hover]}]`}</p>
+      </Card>
+      <Card title="情報">
+        <InfoTable
+          rows={[
+            ["part tiles", part.tileCount],
+            ["startIndex", `${hex4(part.startIndex)} (refs[${part.startIndex / 2}])`],
+            ["refs", `tiles[${min}..${max}]`],
+            ["TileSetFile", hex4(ts.id)],
+            ["parts", ts.parts.length],
+            ["all refs", ts.refCount],
+            ["all tiles", ts.tiles.length / 32],
+            ["unk", ts.unk],
+          ]}
+        />
+      </Card>
+    </AssetView>
   );
 };

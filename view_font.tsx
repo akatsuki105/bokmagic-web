@@ -7,7 +7,7 @@ import { FONT_FILE, type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./generated/charmap.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { bgpLabel, Desc, hex4, InfoTable, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
+import { AssetView, bgpLabel, Card, hex4, InfoTable, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
 
 // Font_SetPltt が 14・15 本目を差し替えるのに使う BG パレット (0: BGP_529C, 1: BGP_539C)
 const FONT_PLTTS = [0x529C, 0x539C];
@@ -60,48 +60,65 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           </li>
         ))}
       </ul>
-      <div class="sprite-view">
-        <h2>{kind === "hankaku" ? "半角" : "全角"}</h2>
-        <Desc text={`${kind === "hankaku" ? "半角" : "全角"}の字形 (${gw}x${gh}) を番号順に並べています。style は Font_AcquireGlyph と同じく、各ドットに style << 2 を OR します`} />
-        <div class="controls">
-          {plttFiles.map((id) => (
-            <label key={id}>
-              <input type="radio" name="font-pltt" checked={plttFile === id} onChange={() => setPlttFile(id)} /> {bgpLabel(id, false)} (Font_SetPltt({FONT_PLTTS.indexOf(id)}))
+      <AssetView
+        title={kind === "hankaku" ? "半角" : "全角"}
+        desc={`${kind === "hankaku" ? "半角" : "全角"}の字形 (${gw}x${gh}) を番号順に並べています。style は Font_AcquireGlyph と同じく、各ドットに style << 2 を OR します`}
+        stage={
+          <SpriteCanvas
+            rendered={rendered}
+            scale={scale}
+            grid={grid ? [gw, gh] : undefined}
+            onHover={(x, y) => setHover(x < 0 ? -1 : Math.floor(y / gh) * cols + Math.floor(x / gw))}
+          />
+        }
+      >
+        <Card title="パレット">
+          <div class="controls">
+            {plttFiles.map((id) => (
+              <label key={id}>
+                <input type="radio" name="font-pltt" checked={plttFile === id} onChange={() => setPlttFile(id)} /> {bgpLabel(id, false)} (Font_SetPltt({FONT_PLTTS.indexOf(id)}))
+              </label>
+            ))}
+          </div>
+          <div class="controls">
+            {plttFiles.length > 0 ? <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} /> : <span>この ROM にはフォント用の BG パレット ({FONT_PLTTS.map((id) => hex4(id)).join(", ")}) が無いので、灰色で描きます</span>}
+          </div>
+          <div class="controls">
+            <Swatches colors={colors} start={0} />
+          </div>
+        </Card>
+        <Card title="表示">
+          <div class="controls">
+            <NumberStepper label="style" value={style} min={0} max={3} onChange={setStyle} />
+            <NumberStepper label="columns" value={cols} min={1} max={64} onChange={setCols} />
+          </div>
+          <div class="controls">
+            <label>
+              scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
             </label>
-          ))}
-          {plttFiles.length > 0 ? <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} /> : <span>この ROM にはフォント用の BG パレット ({FONT_PLTTS.map((id) => hex4(id)).join(", ")}) が無いので、灰色で描きます</span>}
-          <Swatches colors={colors} start={0} />
-        </div>
-        <div class="controls">
-          <NumberStepper label="style" value={style} min={0} max={3} onChange={setStyle} />
-          <NumberStepper label="columns" value={cols} min={1} max={64} onChange={setCols} />
-          <label>
-            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-          </label>
-          <label>
-            <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
-          </label>
-        </div>
-        <p class="mono hover-line">
-          {hover >= 0 && hover < count && `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)")}
-        </p>
-        <SpriteCanvas
-          rendered={rendered}
-          scale={scale}
-          grid={grid ? [gw, gh] : undefined}
-          onHover={(x, y) => setHover(x < 0 ? -1 : Math.floor(y / gh) * cols + Math.floor(x / gw))}
-        />
-        <InfoTable
-          rows={[
-            ["file", hex4(font.id)],
-            ["glyph size", gw === 12 ? "12x12 (タイルに分けない, 72 bytes)" : `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
-            ["glyphs", count],
-            ["hankaku", font.hankakuCount],
-            ["zenkaku", font.zenkakuCount],
-            ["palette", plttFile === undefined ? "灰色 (ROM に無い)" : `${bgpLabel(plttFile, false)} row ${row}`],
-          ]}
-        />
-      </div>
+            <label>
+              <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
+            </label>
+          </div>
+        </Card>
+        <Card title="カーソル">
+          <p class="mono hover-line">
+            {hover >= 0 && hover < count && `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)")}
+          </p>
+        </Card>
+        <Card title="情報">
+          <InfoTable
+            rows={[
+              ["file", hex4(font.id)],
+              ["glyph size", gw === 12 ? "12x12 (タイルに分けない, 72 bytes)" : `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
+              ["glyphs", count],
+              ["hankaku", font.hankakuCount],
+              ["zenkaku", font.zenkakuCount],
+              ["palette", plttFile === undefined ? "灰色 (ROM に無い)" : `${bgpLabel(plttFile, false)} row ${row}`],
+            ]}
+          />
+        </Card>
+      </AssetView>
     </div>
   );
 };

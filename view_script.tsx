@@ -9,7 +9,7 @@ import { scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
 import { SCRIPT_NAMES, STRING_NAMES } from "./generated/names.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { Desc, hashID, hex4, InfoTable, useHashID } from "./components.tsx";
+import { AssetView, Card, hashID, hex4, InfoTable, useHashID } from "./components.tsx";
 
 // 名前表は U32J (rev1, rev0) のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
 const printContext = (): PrintContext => ({
@@ -72,22 +72,28 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
   const desc = decomp(SCRIPT_NAMES)[script.id]?.[1];
 
   return (
-    <div class="sprite-view">
-      <h2>{scriptName(script.id, names().ctx)}</h2>
-      <Desc text={desc} />
-      <pre class="bokc">
-        <LinkedText text={text} />
-      </pre>
-      <InfoTable
-        rows={[
-          ["ID", hex4(script.id)],
-          ["ROM", `0x${(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}`],
-          ["variables", script.varCount],
-          ["called by", callers.length > 0 ? <ScriptLinks key="v" ids={callers} /> : <span key="v" class="dim">(定数で呼んでいるスクリプトは無し)</span>],
-        ]}
-      />
-      {aliases.length > 0 && <Aliases ids={aliases.map((s) => s.id)} />}
-    </div>
+    <AssetView
+      narrow
+      title={scriptName(script.id, names().ctx)}
+      desc={desc}
+      stage={
+        <pre class="bokc">
+          <LinkedText text={text} />
+        </pre>
+      }
+    >
+      <Card title="情報">
+        <InfoTable
+          rows={[
+            ["ID", hex4(script.id)],
+            ["ROM", `0x${(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}`],
+            ["variables", script.varCount],
+            ["called by", callers.length > 0 ? <ScriptLinks key="v" ids={callers} /> : <span key="v" class="dim">(定数で呼んでいるスクリプトは無し)</span>],
+          ]}
+        />
+        {aliases.length > 0 && <Aliases ids={aliases.map((s) => s.id)} />}
+      </Card>
+    </AssetView>
   );
 };
 

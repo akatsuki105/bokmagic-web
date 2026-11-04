@@ -17,15 +17,16 @@ import { MapViewer } from "./view_map.tsx";
 import { SoundViewer, VolumeControl } from "./view_sound.tsx";
 
 // 左のタブ, 選んでいるものは URL の # に入れておく
+// スプライト, マップ, その他の順. それぞれ組み上がったもの → 部品 → パレットの順に並べる
 const TABS = [
   ["main", "MainSprite"],
   ["aux", "AuxSprite"],
   ["particle", "Particle"],
   ["objpltt", "OBJ Palette"],
-  ["bgpltt", "BG Palette"],
-  ["tileset", "Tileset"],
   ["map", "Map"],
   ["tilemap", "Tilemap"],
+  ["tileset", "Tileset"],
+  ["bgpltt", "BG Palette"],
   ["collision", "Collision"],
   ["font", "Font"],
   ["script", "Script"],
@@ -182,7 +183,7 @@ const App = () => {
             {TABS.map(([id, label]) => <a key={id} href={`#${id}`} class={`tab${id === tab ? " selected" : ""}${isSupported(rom, id) ? "" : " dim"}`}>{label}</a>)}
           </nav>
           <div key={romSerial} class="tab-body">
-            {!isSupported(rom, tab) && <p>この ROM ({rom.id}) の {TABS.find(([id]) => id === tab)?.[1]} にはまだ対応していません</p>}
+            {!isSupported(rom, tab) && <p class="unsupported">この ROM ({rom.id}) の {TABS.find(([id]) => id === tab)?.[1]} にはまだ対応していません</p>}
             {isSupported(rom, tab) && tab === "main" && <MainSpriteViewer rom={rom} />}
             {isSupported(rom, tab) && tab === "aux" && <AuxSpriteViewer rom={rom} />}
             {isSupported(rom, tab) && tab === "particle" && <ParticleViewer rom={rom} />}

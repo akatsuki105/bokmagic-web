@@ -6,7 +6,7 @@ import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { BGPLTT_REFS } from "./generated/bgpltt_refs.ts";
 import { decomp } from "./decomp.ts";
-import { bgpDesc, bgpLabel, ColorTable, Desc, hashID, hex4, InfoTable, NumberStepper, Swatches, useHashID } from "./components.tsx";
+import { AssetView, bgpDesc, bgpLabel, Card, ColorTable, hashID, hex4, InfoTable, NumberStepper, StageTitle, Swatches, useHashID } from "./components.tsx";
 
 export const bgplttHref = (id: number) => `#bgpltt/${hex4(id)}`;
 
@@ -38,27 +38,37 @@ const BgPaletteView: FunctionComponent<{ file: BgPlttFile }> = ({ file }) => {
   const refs = decomp(BGPLTT_REFS)[file.id];
 
   return (
-    <div class="sprite-view">
-      <h2>{bgpLabel(file.id, false)}</h2>
-      <Desc text={bgpDesc(file.id)} />
-      <div class="controls">
-        <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} />
-      </div>
-      <div class="bgpltt-grid">
-        {Array.from({ length: 16 }, (_, r) => (
-          <div key={r} class={r === row ? "pltt-row selected" : "pltt-row"} onClick={() => setRow(r)}>
-            <span>{r}</span>
-            <Swatches colors={file.colors} start={r * 16} />
+    <AssetView
+      title={bgpLabel(file.id, false)}
+      desc={bgpDesc(file.id)}
+      stage={
+        <>
+          <div class="bgpltt-grid">
+            {Array.from({ length: 16 }, (_, r) => (
+              <div key={r} class={r === row ? "pltt-row selected" : "pltt-row"} onClick={() => setRow(r)}>
+                <span>{r}</span>
+                <Swatches colors={file.colors} start={r * 16} />
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
-      <ColorTable raw={file.raw} colors={file.colors} start={row * 16} note0={row === 0 ? "BG では透明, 0 本目の色0 は背景色" : "BG では透明"} />
-      <InfoTable
-        rows={[
-          ["header", <span key="v" class="mono">{[...file.header].map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ")}</span>],
-          ["read at", refs ?? <span key="v" class="dim">ソース中で定数として読まれている箇所は見つかっていません</span>],
-        ]}
-      />
-    </div>
+          <StageTitle>色 ({row} 本目)</StageTitle>
+          <ColorTable raw={file.raw} colors={file.colors} start={row * 16} note0={row === 0 ? "BG では透明, 0 本目の色0 は背景色" : "BG では透明"} />
+        </>
+      }
+    >
+      <Card title="表示">
+        <div class="controls">
+          <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} />
+        </div>
+      </Card>
+      <Card title="情報">
+        <InfoTable
+          rows={[
+            ["header", <span key="v" class="mono">{[...file.header].map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ")}</span>],
+            ["read at", refs ?? <span key="v" class="dim">ソース中で定数として読まれている箇所は見つかっていません</span>],
+          ]}
+        />
+      </Card>
+    </AssetView>
   );
 };

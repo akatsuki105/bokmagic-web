@@ -24,6 +24,16 @@
         --bg-list: light-dark(#efedea, #242424);
         --stripe: light-dark(transparent, rgb(255 255 255 / 0.08)); /* 一覧の偶数行 (明るく) */
         --stripe-odd: light-dark(transparent, rgb(0 0 0 / 0.15)); /* 一覧の奇数行 (暗く) */
+        /* 右の欄のカードと、控えめな文字 (説明, 表の項目名, カードの見出し) */
+        --bg-card: light-dark(#f8f7f5, #303030);
+        --text-dim: light-dark(#6f7374, #9c9c9c);
+        --border: light-dark(#cfcac3, #464646);
+        /* ボタンと入力欄 (ブラウザ標準の見た目は暗い画面で浮くので自分で塗る) */
+        --bg-input: light-dark(#ffffff, #1d1d1d);
+        --bg-button: light-dark(#e9e6e2, #3b3b3b);
+        --bg-button-hover: light-dark(#dedad4, #474747);
+        --accent: #5b7bff;
+        --bg-selected: light-dark(#cfd8ff, #3a4470);
         /* 英数字と日本語で字形がそろうように、フォントを具体的に指定する (日本語は等幅でもヒラギノなどの同じゴシックで出す) */
         --font-sans: system-ui, -apple-system, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Noto Sans JP", "Yu Gothic UI", "Meiryo", sans-serif;
         --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", monospace;
@@ -48,6 +58,39 @@
       input,
       select {
         font-family: inherit;
+        color: inherit;
+      }
+      input[type="number"],
+      input[type="text"],
+      input[type="search"],
+      select {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 6px;
+      }
+      button {
+        background: var(--bg-button);
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        padding: 2px 10px;
+        cursor: pointer;
+      }
+      button:hover:not(:disabled) {
+        background: var(--bg-button-hover);
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      button.selected {
+        background: var(--bg-selected);
+        border-color: var(--accent);
+      }
+      input[type="checkbox"],
+      input[type="radio"],
+      input[type="range"] {
+        accent-color: var(--accent);
       }
       /* 表は行数が多いので、本文より少しだけ詰める (一覧は読みやすさを優先して .sprite-list で広めに取る) */
       .pltt-table {
@@ -296,6 +339,50 @@
         padding: 1px 8px;
         text-align: left;
       }
+      /* 右の欄のカード. 見出しは控えめな色の小さめの太字 */
+      .card {
+        background: var(--bg-card);
+        border-radius: 6px;
+        padding: 10px 14px 12px;
+        margin-bottom: 12px;
+      }
+      .card > h3 {
+        margin: 0 0 8px;
+        font-size: 14px;
+        color: var(--text-dim);
+      }
+      .card .controls + .controls,
+      .card .controls + .bgpltt-grid,
+      .card .controls + p {
+        margin-top: 8px;
+      }
+      .card .info-table {
+        margin-top: 0;
+      }
+      .card p:first-of-type {
+        margin-top: 0;
+      }
+      .card p:last-child,
+      .card table:last-child {
+        margin-bottom: 0;
+      }
+      /* 未対応のタブの案内 */
+      .unsupported {
+        margin: 0;
+        padding: 12px 16px;
+        color: var(--text-dim);
+      }
+      /* 説明 (decomp の定数のコメントなど) */
+      .desc {
+        color: var(--text-dim);
+        margin: 0 0 12px;
+      }
+      /* 本体の欄の中の見出し (ポーズ一覧 など) */
+      .stage-title {
+        margin: 20px 0 8px;
+        font-size: 14px;
+        color: var(--text-dim);
+      }
       /* ID の一覧と同じ縞にする表 (Collision のゾーン・経路) */
       .striped tbody tr:nth-child(odd) {
         background: var(--stripe-odd);
@@ -308,7 +395,12 @@
         padding: 4px 8px;
         white-space: nowrap; /* 右の欄が狭くても折り返さず、欄の中で横にスクロールする */
       }
-      /* Map, Tilemap, Collision: 見出しの下を、左に絵、右にそれ以外を並べる. 左右はそれぞれスクロールする. 狭い画面では今までどおり縦に並べる */
+      .striped.wrap th,
+      .striped.wrap td {
+        white-space: normal; /* 引数の並びなど長い値は折り返す */
+        vertical-align: top;
+      }
+      /* Map, Tilemap, Collision: 見出しの下を、左に絵、右にそれ以外を並べる. 左右はそれぞれスクロールする. 画面幅が 900px より狭いときは縦に並べる */
       .sprite-view.split-view {
         display: flex;
         flex-direction: column;
@@ -328,12 +420,15 @@
         padding-bottom: 24px;
       }
       .split-side {
-        width: clamp(380px, 32vw, 560px); /* 表が折り返しにくいよう、広い画面では少し広げる */
+        width: clamp(300px, 32vw, 560px); /* 表が折り返しにくいよう、広い画面では少し広げる */
         flex-shrink: 0;
         overflow: auto;
         padding-bottom: 24px;
       }
-      @media (max-width: 1100px) {
+      .split-side.narrow {
+        width: clamp(280px, 22vw, 360px);
+      }
+      @media (max-width: 900px) {
         .sprite-view.split-view {
           display: block;
           overflow: auto;
@@ -394,6 +489,25 @@
       .script-loads {
         font-size: 14px;
       }
+      /* Sound の再生欄 */
+      .player {
+        background: var(--bg-card);
+        border-radius: 6px;
+        padding: 14px 16px;
+        max-width: 560px;
+        margin-bottom: 12px;
+      }
+      .player .seek {
+        margin-top: 10px;
+      }
+      .player button.play {
+        min-width: 6em;
+        padding: 4px 16px;
+        font-weight: bold;
+      }
+      .player p:last-child {
+        margin-bottom: 0;
+      }
       .seek input[type="range"] {
         flex: 1;
         max-width: 480px;
@@ -406,6 +520,9 @@
         margin-top: 1em;
       }
       .info-table th {
+        color: var(--text-dim);
+        font-weight: normal;
+        padding-right: 1.2em;
         white-space: nowrap;
         vertical-align: top;
       }
@@ -474,9 +591,7 @@
         border-color: #4a6cff;
       }
       .anim-panel {
-        margin: 0.5em 0;
-        padding: 0.5em;
-        border: 1px solid light-dark(#ccc, #444);
+        margin: 0;
       }
       .anim-panel .controls + .controls {
         margin-top: 0.5em;
@@ -493,8 +608,9 @@
         font-size: 14px;
       }
       .anim-cmd {
-        padding: 1px 4px;
-        border: 1px solid light-dark(#ccc, #444);
+        padding: 1px 6px;
+        border: 1px solid var(--border);
+        border-radius: 3px;
         cursor: pointer;
       }
       .anim-cmd.current {

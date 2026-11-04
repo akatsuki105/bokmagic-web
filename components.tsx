@@ -1,4 +1,4 @@
-// MainSprite と AuxSprite のビューワで共通に使う部品
+// 各タブのビューワで共通に使う部品
 
 import type { ComponentChildren, FunctionComponent } from "preact";
 import { useEffect, useLayoutEffect, useMemo, useRef } from "preact/hooks";
@@ -19,7 +19,34 @@ export const spriteLabel = (id: number, withDesc = true) => {
 };
 
 // 見出しの下に出す説明 (decomp の定数のコメント), 無ければ何も出さない
-export const Desc: FunctionComponent<{ text?: string }> = ({ text }) => (text ? <p>{text}</p> : null);
+export const Desc: FunctionComponent<{ text?: string }> = ({ text }) => (text ? <p class="desc">{text}</p> : null);
+
+// 本文の作り (全タブ共通). 上に見出し、左に絵やコードなどの本体 (stage)、右に見出し付きのカード (children) を縦に並べる
+// 左右はそれぞれスクロールする. 画面幅が 900px より狭いときは本体 → カードの順に縦に並べる (index.html の .split-*)
+// narrow: 右の欄を細くする (本体が横に長いコードのとき)
+export const AssetView: FunctionComponent<{ title: ComponentChildren; desc?: string; stage: ComponentChildren; narrow?: boolean }> = ({ title, desc, stage, narrow, children }) => (
+  <div class="sprite-view split-view">
+    <h2>{title}</h2>
+    <div class="split">
+      <div class="split-canvas">{stage}</div>
+      <div class={narrow ? "split-side narrow" : "split-side"}>
+        <Desc text={desc} />
+        {children}
+      </div>
+    </div>
+  </div>
+);
+
+// 右の欄のまとまり 1 つ (表示の操作, アニメ, 情報 など)
+export const Card: FunctionComponent<{ title?: string }> = ({ title, children }) => (
+  <section class="card">
+    {title && <h3>{title}</h3>}
+    {children}
+  </section>
+);
+
+// 本体の欄の中の見出し (ポーズ一覧 など)
+export const StageTitle: FunctionComponent = ({ children }) => <h3 class="stage-title">{children}</h3>;
 
 // 詳細の表 (本文の一番下に置く), [項目名, 値] の並び
 export const InfoTable: FunctionComponent<{ rows: [string, ComponentChildren][] }> = ({ rows }) => (

@@ -17,7 +17,7 @@ import { scriptHref } from "./view_script.tsx";
 import { collisionHref, collisionTileText } from "./view_collision.tsx";
 import { tilemapHref, tilemapLabel } from "./view_tilemap.tsx";
 import { bgplttHref } from "./view_bgpltt.tsx";
-import { bgpLabel, type BgPlttChoice, BgPlttSelect, Desc, hashID, hex4, InfoTable, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { bgpLabel, type BgPlttChoice, BgPlttSelect, Card, Desc, hashID, hex4, InfoTable, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 import { STAGE_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 
@@ -107,24 +107,28 @@ const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | 
           <>
             <Desc text={stageDesc(entry.stage)} />
             {entry.scenes.length > 1 && (
+              <Card title="場面">
+                <p class="desc">if/switch で読み込むものが変わる, または同じ BG に読み直している</p>
+                <div class="controls">
+                  {sceneLabels(entry.scenes).map((label, i) => (
+                    <label key={i}>
+                      <input type="radio" name="map-scene" checked={i === sceneIdx} onChange={() => setSceneIdx(i)} /> {label}
+                    </label>
+                  ))}
+                </div>
+              </Card>
+            )}
+            <Card title="パレット">
               <div class="controls">
-                場面 (if/switch で読み込むものが変わる, または同じ BG に読み直している):
-                {sceneLabels(entry.scenes).map((label, i) => (
-                  <label key={i}>
-                    <input type="radio" name="map-scene" checked={i === sceneIdx} onChange={() => setSceneIdx(i)} /> {label}
-                  </label>
+                <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} rowSelectable={false} />
+                {plttIDs.length > 0 && <span>スクリプトの指定:</span>}
+                {plttIDs.map((id) => (
+                  <button type="button" key={id} class={id === pltt.file ? "selected" : ""} onClick={() => setPltt({ file: id, row: 0 })}>
+                    {bgpLabel(id, false)}
+                  </button>
                 ))}
               </div>
-            )}
-            <div class="controls">
-              <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} rowSelectable={false} />
-              {plttIDs.length > 0 && <span>スクリプトの指定:</span>}
-              {plttIDs.map((id) => (
-                <button type="button" key={id} class={id === pltt.file ? "selected" : ""} onClick={() => setPltt({ file: id, row: 0 })}>
-                  {bgpLabel(id, false)}
-                </button>
-              ))}
-            </div>
+            </Card>
           </>
         }
       />
@@ -180,101 +184,109 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
       </div>
       <div class="split-side">
         {head}
-        <h3>BG</h3>
-        <div class="controls">
-          {[...state.slots].reverse().map((s) => (
-            <label key={s.bg}>
-              <input
-                type="checkbox"
-                checked={!hidden.includes(s.bg)}
-                onChange={(e) => {
-                  const checked = e.currentTarget.checked;
-                  setHidden((cur) => (checked ? cur.filter((b) => b !== s.bg) : [...cur, s.bg]));
-                }}
-              />
-              BG{s.bg} ({hex4(s.map.id)} #{s.layer})
-            </label>
-          ))}
-          {state.slots.length === 0 && <span class="dim">BG に載るタイルマップがありません</span>}
-        </div>
-        <div class="controls">
-          <label>
-            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-          </label>
-          <label>
-            grid{" "}
-            <select value={grid} onChange={(e) => setGrid(e.currentTarget.value as "none" | "square" | "iso")}>
-              <option value="none">なし</option>
-              <option value="square">正方形</option>
-              <option value="iso">アイソメトリック</option>
-            </select>
-          </label>
-          {grid === "iso" && <NumberStepper label="高さ" value={isoLevel} min={0} max={15} onChange={setIsoHeight} />}
-          {grid === "iso" && !colMap && <span class="dim">Collision Map が無いので位置は合いません</span>}
-          <label>
-            <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
-          </label>
-        </div>
-        <div class="controls">
-          <label>
-            Collision Map{" "}
-            <select value={colID ?? ""} onChange={(e) => setColID(e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}>
-              {colIDs.length === 0 && <option value="">(なし)</option>}
-              {colIDs.map((id) => <option key={id} value={id}>{hex4(id)}</option>)}
-            </select>
-          </label>
-          {colMap && (
-            <>
-              <label>
-                <input type="checkbox" checked={showCol} onChange={(e) => setShowCol(e.currentTarget.checked)} /> タイルを重ねる
+        <Card title="BG">
+          <div class="controls">
+            {[...state.slots].reverse().map((s) => (
+              <label key={s.bg}>
+                <input
+                  type="checkbox"
+                  checked={!hidden.includes(s.bg)}
+                  onChange={(e) => {
+                    const checked = e.currentTarget.checked;
+                    setHidden((cur) => (checked ? cur.filter((b) => b !== s.bg) : [...cur, s.bg]));
+                  }}
+                />
+                BG{s.bg} ({hex4(s.map.id)} #{s.layer})
               </label>
-              {showCol && (["attr", "height", "outline"] as const).map((m) => (
-                <label key={m}>
-                  <input type="radio" name="map-overlay-mode" checked={overlayMode === m} onChange={() => setOverlayMode(m)} /> {m === "attr" ? "属性" : m === "height" ? "高さ" : "枠だけ"}
-                </label>
-              ))}
-              {showCol && (
+            ))}
+            {state.slots.length === 0 && <span class="dim">BG に載るタイルマップがありません</span>}
+          </div>
+          <div class="controls">
+            <label>
+              scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
+            </label>
+            <label>
+              grid{" "}
+              <select value={grid} onChange={(e) => setGrid(e.currentTarget.value as "none" | "square" | "iso")}>
+                <option value="none">なし</option>
+                <option value="square">正方形</option>
+                <option value="iso">アイソメトリック</option>
+              </select>
+            </label>
+            {grid === "iso" && <NumberStepper label="高さ" value={isoLevel} min={0} max={15} onChange={setIsoHeight} />}
+            {grid === "iso" && !colMap && <span class="dim">Collision Map が無いので位置は合いません</span>}
+            <label>
+              <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
+            </label>
+          </div>
+        </Card>
+        <Card title="当たり判定">
+          <div class="controls">
+            <label>
+              Collision Map{" "}
+              <select value={colID ?? ""} onChange={(e) => setColID(e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}>
+                {colIDs.length === 0 && <option value="">(なし)</option>}
+                {colIDs.map((id) => <option key={id} value={id}>{hex4(id)}</option>)}
+              </select>
+            </label>
+            {colMap && (
+              <>
                 <label>
-                  不透明度 <input type="range" min={0} max={1} step={0.05} value={opacity} onInput={(e) => setOpacity(Number(e.currentTarget.value))} />
+                  <input type="checkbox" checked={showCol} onChange={(e) => setShowCol(e.currentTarget.checked)} /> タイルを重ねる
                 </label>
-              )}
-              {(["zones", "paths", "navMesh"] as const).map((o) => (
-                <label key={o}>
-                  <input type="checkbox" checked={world[o]} onChange={(e) => setWorld({ ...world, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
-                </label>
-              ))}
-            </>
-          )}
-        </div>
-        <p class="mono hover-info">
-          <HoverInfo slots={shown} colMap={colMap} x={hover[0]} y={hover[1]} />
-        </p>
-        <InfoTable
-          rows={[
-            ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root)}</a>],
-            ["stage", entry.stage === null ? <span key="v" class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText key="v" stage={entry.stage} />],
-            ...state.slots.slice().reverse().map((s): [string, ComponentChildren] => [
-              `BG${s.bg}`,
-              <span key="v">
-                優先度 {s.prio}, <a href={tilemapHref(s.map.id)}>{tilemapLabel(s.map.id, false)}</a> layer #{s.layer}, {s.map.layers[s.layer].width}x{s.map.layers[s.layer].height}
-              </span>,
-            ]),
-            ["palette", pltt.file === null ? "(grayscale)" : <a key="v" href={bgplttHref(pltt.file)}>{bgpLabel(pltt.file, false)}</a>],
-            [
-              "Collision Map",
-              colMap
-                ? (
-                  <span key="v">
-                    <a href={collisionHref(colMap.id)}>{hex4(colMap.id)}</a>, {colMap.width}x{colMap.height} tiles
-                  </span>
-                )
-                : <span key="v" class="dim">(なし)</span>,
-            ],
-            ["size", `${width}x${height} px`],
-          ]}
-        />
-        <h3>読み込み</h3>
-        <SceneLoads entry={entry} scene={scene} />
+                {showCol && (["attr", "height", "outline"] as const).map((m) => (
+                  <label key={m}>
+                    <input type="radio" name="map-overlay-mode" checked={overlayMode === m} onChange={() => setOverlayMode(m)} /> {m === "attr" ? "属性" : m === "height" ? "高さ" : "枠だけ"}
+                  </label>
+                ))}
+                {showCol && (
+                  <label>
+                    不透明度 <input type="range" min={0} max={1} step={0.05} value={opacity} onInput={(e) => setOpacity(Number(e.currentTarget.value))} />
+                  </label>
+                )}
+                {(["zones", "paths", "navMesh"] as const).map((o) => (
+                  <label key={o}>
+                    <input type="checkbox" checked={world[o]} onChange={(e) => setWorld({ ...world, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
+                  </label>
+                ))}
+              </>
+            )}
+          </div>
+        </Card>
+        <Card title="カーソル">
+          <p class="mono hover-info">
+            <HoverInfo slots={shown} colMap={colMap} x={hover[0]} y={hover[1]} />
+          </p>
+        </Card>
+        <Card title="情報">
+          <InfoTable
+            rows={[
+              ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root)}</a>],
+              ["stage", entry.stage === null ? <span key="v" class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText key="v" stage={entry.stage} />],
+              ...state.slots.slice().reverse().map((s): [string, ComponentChildren] => [
+                `BG${s.bg}`,
+                <span key="v">
+                  優先度 {s.prio}, <a href={tilemapHref(s.map.id)}>{tilemapLabel(s.map.id, false)}</a> layer #{s.layer}, {s.map.layers[s.layer].width}x{s.map.layers[s.layer].height}
+                </span>,
+              ]),
+              ["palette", pltt.file === null ? "(grayscale)" : <a key="v" href={bgplttHref(pltt.file)}>{bgpLabel(pltt.file, false)}</a>],
+              [
+                "Collision Map",
+                colMap
+                  ? (
+                    <span key="v">
+                      <a href={collisionHref(colMap.id)}>{hex4(colMap.id)}</a>, {colMap.width}x{colMap.height} tiles
+                    </span>
+                  )
+                  : <span key="v" class="dim">(なし)</span>,
+              ],
+              ["size", `${width}x${height} px`],
+            ]}
+          />
+        </Card>
+        <Card title="読み込み">
+          <SceneLoads entry={entry} scene={scene} />
+        </Card>
       </div>
     </div>
   );
@@ -316,8 +328,8 @@ const SceneLoads: FunctionComponent<{ entry: MapEntry; scene: MapScene }> = ({ e
   ];
   return (
     <div class="script-loads">
-      <p>"?" は値がスクリプトから決まらなかったもの, パレットは場面によらずこのスクリプトから届くもの全部</p>
-      <table class="pltt-table">
+      <p class="desc">"?" は値がスクリプトから決まらなかったもの, パレットは場面によらずこのスクリプトから届くもの全部</p>
+      <table class="pltt-table striped wrap">
         <tbody>
           {rows.map(([kind, c, link], i) => (
             <tr key={i}>
