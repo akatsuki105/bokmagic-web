@@ -71,6 +71,7 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 - 本文の並びは全タブで「見出し (ID と名前) → 説明 (`Desc`) → 操作 → 画像 → 詳細の表 (`InfoTable`)」。マウスを乗せたときの情報は画像のすぐ上の 1 行 (`.hover-line`) に出す
 - 色・フォント・行間は `index.html` の `:root` の変数 (`--text`, `--link`, `--font-sans`, `--font-mono`) で決める。ダークモードは `light-dark()` で切り替える
 - 全体の音量は `audio.ts` が localStorage に保存する
+- 最後に開いた ROM は `rom_store.ts` が IndexedDB に保存する。初期画面の「起動時に自動で開く」(既定は off, localStorage に保存) をオンにすると、ページを開いたときにその ROM を開く (URL の `#` のタブと選択はそのまま)
 
 ## 開発
 

@@ -36,6 +36,23 @@ type Tab = typeof TABS[number][0];
 // #tab または #tab/... (タブの中の選択はタブ側が読む)
 const tabFromHash = (): Tab => TABS.find(([id]) => location.hash.slice(1).split("/")[0] === id)?.[0] ?? "main";
 
+// 起動したときに、前回の ROM (IndexedDB に保存したもの) を自動で開くか. 既定は off, localStorage に保存する
+const AUTO_OPEN_KEY = "bokmagic-web.autoOpen";
+const loadAutoOpen = (): boolean => {
+  try {
+    return localStorage.getItem(AUTO_OPEN_KEY) === "1";
+  } catch {
+    return false;
+  }
+};
+const saveAutoOpen = (v: boolean) => {
+  try {
+    localStorage.setItem(AUTO_OPEN_KEY, v ? "1" : "0");
+  } catch {
+    // 保存できなくても (プライベートブラウズなど) 今の画面では効く
+  }
+};
+
 const App = () => {
   const [rom, setRomState] = useState<ROMFile | null>(null);
   // ROM を読み込むたびに増やす, タブの中身をこれで作り直して前の ROM の選択状態を持ち越さないようにする
@@ -56,6 +73,7 @@ const App = () => {
     setTab(tabFromHash());
   };
   const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
+  const [autoOpen, setAutoOpen] = useState(loadAutoOpen);
   const [tab, setTab] = useState<Tab>(tabFromHash());
 
   const open = async (file: File) => {
@@ -85,8 +103,12 @@ const App = () => {
     clearROM().then(() => setSavedName(null)).catch((e) => console.warn("Failed to clear ROM:", e));
   };
 
+  // 起動時: 保存してある ROM の名前を読み、自動で開く設定なら開く (URL の # のタブと選択はそのまま使う)
   useEffect(() => {
-    savedROMName().then((name) => setSavedName(name ?? null)).catch((e) => console.warn("Failed to read saved ROM:", e));
+    savedROMName().then((name) => {
+      setSavedName(name ?? null);
+      if (name && loadAutoOpen()) openSaved();
+    }).catch((e) => console.warn("Failed to read saved ROM:", e));
   }, []);
 
   useEffect(() => {
@@ -129,7 +151,19 @@ const App = () => {
         {!rom && <ROMUpload open={open} />}
         {!rom && savedName && (
           <span>
-            saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>
+            saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>{" "}
+            <label>
+              <input
+                type="checkbox"
+                checked={autoOpen}
+                onChange={(e) => {
+                  const v = e.currentTarget.checked;
+                  setAutoOpen(v);
+                  saveAutoOpen(v);
+                }}
+              />{" "}
+              起動時に自動で開く
+            </label>
           </span>
         )}
         {rom && <span class="rom-name">{rom.name} ({rom.id})</span>}
