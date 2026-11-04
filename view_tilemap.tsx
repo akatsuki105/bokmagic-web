@@ -14,7 +14,7 @@ import { mapEntries } from "./analysis.ts";
 import { mapHref } from "./view_map.tsx";
 import { TILEMAP_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { type BgPlttChoice, BgPlttSelect, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { type BgPlttChoice, BgPlttSelect, Desc, hashID, hex4, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
 
 export const tilemapHref = (id: number) => `#tilemap/${hex4(id)}`;
 
@@ -95,7 +95,8 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; ts: TileS
 
   return (
     <div class="sprite-view">
-      <h2>{tilemapLabel(map.id)}</h2>
+      <h2>{tilemapLabel(map.id, false)}</h2>
+      <Desc text={decomp(TILEMAP_NAMES)[map.id]?.[1]} />
       <p>
         {map.compressed ? "LZ77" : "非圧縮"}, {map.size} bytes, layers: {map.layers.length}, tiles: {map.tileCount} ({map.tiles ? "ファイル内" : "ファイル外"}), metatiles: {map.metatileCount}, loadOffset: {map.loadOffset}
       </p>

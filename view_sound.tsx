@@ -7,7 +7,7 @@ import type { ROMFile } from "./rom.ts";
 import { encodeWav, readSongHeader, readSongTable, type Rendered, renderSong, type SongEntry } from "./m4a/mod.ts";
 import { SONG_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
+import { Desc, hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
 import { audioOutput, useVolume } from "./audio.ts";
 
 // gSongTable の GBA アドレス
@@ -178,7 +178,7 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; repeat: boole
   return (
     <div class="sprite-view">
       <h2>{songLabel(song.index)}</h2>
-      {desc && <p>{desc}</p>}
+      <Desc text={desc} />
       {header.trackCount === 0 ? <p class="dim">トラックが無い曲です</p> : (
         <>
           <div class="controls">

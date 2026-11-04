@@ -6,7 +6,7 @@ import type { ROMFile } from "./rom.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { BGPLTT_REFS } from "./generated/bgpltt_refs.ts";
 import { decomp } from "./decomp.ts";
-import { bgpLabel, ColorTable, hashID, hex4, NumberStepper, Swatches, useHashID } from "./components.tsx";
+import { bgpDesc, bgpLabel, ColorTable, Desc, hashID, hex4, NumberStepper, Swatches, useHashID } from "./components.tsx";
 
 export const bgplttHref = (id: number) => `#bgpltt/${hex4(id)}`;
 
@@ -39,7 +39,8 @@ const BgPaletteView: FunctionComponent<{ file: BgPlttFile }> = ({ file }) => {
 
   return (
     <div class="sprite-view">
-      <h2>{bgpLabel(file.id)}</h2>
+      <h2>{bgpLabel(file.id, false)}</h2>
+      <Desc text={bgpDesc(file.id)} />
       <p class="mono">header: {[...file.header].map((b) => b.toString(16).toUpperCase().padStart(2, "0")).join(" ")}</p>
       <p class="anim-refs">{refs ? `read at ${refs}` : "ソース中で定数として読まれている箇所は見つかっていません"}</p>
       <div class="bgpltt-grid">

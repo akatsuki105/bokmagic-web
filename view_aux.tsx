@@ -10,7 +10,7 @@ import { renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
 import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+import { Desc, flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
 
 export const auxSpriteHref = (id: number) => `#aux/${hex4(id)}`;
 
@@ -58,7 +58,8 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
 
   return (
     <div class="sprite-view">
-      <h2>{spriteLabel(gfx.id)}</h2>
+      <h2>{spriteLabel(gfx.id, false)}</h2>
+      <Desc text={spriteDesc(gfx.id)} />
       <p>
         poses: {gfx.poseCount} (+{gfx.poses.length - gfx.poseCount} after this entry), size: {gfx.pw}x{gfx.ph}, offset: ({gfx.px}, {gfx.py}), plttID: {gfx.plttID}
       </p>

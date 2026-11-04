@@ -18,6 +18,12 @@ export const spriteLabel = (id: number, withDesc = true) => {
   return withDesc ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
 };
 
+// 見出しの下に出す説明 (decomp の定数のコメント), 無ければ何も出さない
+export const Desc: FunctionComponent<{ text?: string }> = ({ text }) => (text ? <p>{text}</p> : null);
+
+export const spriteDesc = (id: number) => decomp(SPRITE_NAMES)[id]?.[1];
+export const bgpDesc = (id: number) => decomp(BGP_NAMES)[id]?.[1];
+
 // BG パレットのファイル, withDesc が false なら定数名まで
 export const bgpLabel = (id: number, withDesc = true) => {
   const name = decomp(BGP_NAMES)[id];

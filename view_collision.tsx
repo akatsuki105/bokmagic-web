@@ -10,7 +10,7 @@ import { scriptHref } from "./view_script.tsx";
 import { tilemapHref } from "./view_tilemap.tsx";
 import { COLLISION_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
+import { Desc, hashID, hex4, NumberStepper, useHashID } from "./components.tsx";
 
 const collisionLabel = (id: number, withDesc = true) => {
   const name = decomp(COLLISION_NAMES)[id];
@@ -131,7 +131,8 @@ const CollisionView: FunctionComponent<{
 
   return (
     <div class="sprite-view">
-      <h2>{collisionLabel(map.id)}</h2>
+      <h2>{collisionLabel(map.id, false)}</h2>
+      <Desc text={decomp(COLLISION_NAMES)[map.id]?.[1]} />
       <p>
         {map.width}x{map.height} tiles, tilemapOffset: ({map.tilemapOffsetX}, {map.tilemapOffsetY}), unk_0: {map.unk_0}, zones: {map.zones.length}, paths: {map.paths.length}, navMesh: {map.navMesh ? `${map.navMesh.length} islands` : "なし"}
       </p>

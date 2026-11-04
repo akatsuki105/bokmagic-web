@@ -9,7 +9,7 @@ import { scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
 import { SCRIPT_NAMES, STRING_NAMES } from "./generated/names.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { hashID, hex4, useHashID } from "./components.tsx";
+import { Desc, hashID, hex4, useHashID } from "./components.tsx";
 
 // 名前表は U32J rev1 のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
 const printContext = (): PrintContext => ({
@@ -43,7 +43,7 @@ export const ScriptViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
 
   return (
     <div class="viewer">
-      <div>
+      <div class="list-pane">
         <input type="search" placeholder="filter (ID / name)" value={filter} onInput={(e) => setFilter(e.currentTarget.value)} />
         <ul class="sprite-list">
           {list.map((s) => (
@@ -73,9 +73,8 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
 
   return (
     <div class="sprite-view">
-      <h2>
-        {scriptName(script.id, names().ctx)} {desc}
-      </h2>
+      <h2>{scriptName(script.id, names().ctx)}</h2>
+      <Desc text={desc} />
       <p>
         ID: {hex4(script.id)}, ROM: 0x{(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}, variables: {script.varCount}
       </p>

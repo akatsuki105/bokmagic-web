@@ -10,7 +10,7 @@ import { OBJ_SIZE, renderObjs } from "./render.ts";
 import { AuxAnimPanel } from "./view_aux.tsx";
 import { PARTICLE_ANIM_REFS, PARTICLE_GROUP_NAMES, PARTICLE_PLTT_REFS, PARTICLE_POSE_NAMES } from "./generated/particle_refs.ts";
 import { decomp } from "./decomp.ts";
-import { hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas } from "./components.tsx";
+import { Desc, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas } from "./components.tsx";
 
 const groupLabel = (id: number, withDesc = true) => {
   const name = decomp(PARTICLE_GROUP_NAMES)[id];
@@ -65,7 +65,8 @@ const ParticleView: FunctionComponent<{ file: ParticleFile; group: ParticleGroup
 
   return (
     <div class="sprite-view">
-      <h2>{groupLabel(group.id)}</h2>
+      <h2>{groupLabel(group.id, false)}</h2>
+      <Desc text={decomp(PARTICLE_GROUP_NAMES)[group.id]?.[1]} />
       <p>
         file {hex4(file.id)}, size: {w}x{h}, {group.flags & PGFLAG_BPP8 ? "8bpp" : "4bpp"}, tile: {group.tile}, poses: {group.poseCount} (+{group.poseLimit - group.poseCount} after this group), plttID: {group.plttID}
       </p>

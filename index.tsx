@@ -44,6 +44,14 @@ const App = () => {
     setRomSerial((n) => n + 1);
   };
   const [error, setError] = useState<string | null>(null);
+  // 初期画面 (ROM を読み込んでいない状態) に戻す, URL の # も消す
+  const reset = (e: Event) => {
+    e.preventDefault();
+    setRomState(null);
+    setError(null);
+    history.pushState(null, "", location.pathname + location.search);
+    setTab(tabFromHash());
+  };
   const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
   const [tab, setTab] = useState<Tab>(tabFromHash());
 
@@ -84,6 +92,14 @@ const App = () => {
     return () => removeEventListener("hashchange", onHash);
   }, []);
 
+  // 一覧は個別にスクロールするので、URL で選んだ項目が見えるように一覧をスクロールする
+  useEffect(() => {
+    const reveal = () => setTimeout(() => document.querySelector(".sprite-list li.selected")?.scrollIntoView({ block: "nearest" }));
+    reveal();
+    addEventListener("hashchange", reveal);
+    return () => removeEventListener("hashchange", reveal);
+  }, [rom, tab]);
+
   // ウィンドウ全体でドラッグ&ドロップを受け付ける
   useEffect(() => {
     const over = (e: DragEvent) => e.preventDefault();
@@ -101,21 +117,23 @@ const App = () => {
   }, []);
 
   return (
-    <div>
-      <h1>bokmagic-web</h1>
-      <ROMUpload open={open} />
-      {savedName && (
-        <p>
-          saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>
-        </p>
-      )}
-      {error && <p class="error">{error}</p>}
-      {rom && (
-        <p class="controls">
-          <span>{rom.name} ({rom.id})</span>
-          <VolumeControl />
-        </p>
-      )}
+    <div class="app">
+      <header class="app-header">
+        <h1>
+          <a href="./" onClick={reset}>bokmagic-web</a>
+        </h1>
+        {/* 読み込み UI は ROM を開いていないときだけ出す (タイトルを押すと戻る, ドロップはいつでも受け付ける) */}
+        {!rom && <ROMUpload open={open} />}
+        {!rom && savedName && (
+          <span>
+            saved: {savedName} <button type="button" onClick={openSaved}>open</button> <button type="button" onClick={forget}>forget</button>
+          </span>
+        )}
+        {rom && <span class="rom-name">{rom.name} ({rom.id})</span>}
+        {rom && <VolumeControl />}
+        {error && <span class="error">{error}</span>}
+      </header>
+      {!rom && <p class="no-rom">ROM ファイルを選ぶか、ウィンドウにドロップしてください</p>}
       {rom && (
         <div class="app-body">
           <nav class="tabs">
@@ -153,9 +171,9 @@ const ROMUpload: FunctionComponent<{ open: (file: File) => Promise<void> }> = ({
   };
 
   return (
-    <div>
-      <label for="rom-file">Choose ROM (or drop it here)</label> <input type="file" id="rom-file" accept=".gba" onChange={handleFiles} disabled={busy} />
-    </div>
+    <span>
+      <label for="rom-file">ROM</label> <input type="file" id="rom-file" accept=".gba" onChange={handleFiles} disabled={busy} />
+    </span>
   );
 };
 

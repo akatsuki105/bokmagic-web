@@ -8,7 +8,7 @@ import type { ROMFile } from "./rom.ts";
 import { type MainSpriteGfx, parseMainSprite, poseToObjs } from "./sprite_main.ts";
 import { renderObjs } from "./render.ts";
 import { MAIN_ANIM_EVENT_ADVANCED, MAIN_ANIM_EVENT_ENDED, MAIN_ANIM_EVENT_WILL_END, MAIN_ANIM_FORCE_POSE, MAIN_ANIM_KEEP_FRAME, MAIN_ANIM_REVERSE, MainSpriteAnimState, PLAYMODE_LOOP, PLAYMODE_ONCE_AND_STOP, PLAYMODE_PAUSE, PLAYMODE_PLAY_ONCE_HIDE } from "./anim_main.ts";
-import { flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
+import { Desc, flagNames, hashID, hex4, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, useFrameLoop, useHashID } from "./components.tsx";
 
 export const mainSpriteHref = (id: number) => `#main/${hex4(id)}`;
 
@@ -58,7 +58,8 @@ const MainSpriteView: FunctionComponent<{ id: number; gfx: MainSpriteGfx; pltt: 
 
   return (
     <div class="sprite-view">
-      <h2>{spriteLabel(id)}</h2>
+      <h2>{spriteLabel(id, false)}</h2>
+      <Desc text={spriteDesc(id)} />
       <p>
         poses: {gfx.poses.length}, anims: {gfx.anims.length}, tiles: {gfx.tiles.length / 32}, palStart: {gfx.palStart}
       </p>

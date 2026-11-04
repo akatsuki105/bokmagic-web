@@ -1131,7 +1131,7 @@ export const STAGE_NAMES: Record<number, [name: string, desc: string]> = {
   0x000C: ["ST_TREASURY", "宝物庫"],
   0x000D: ["ST_MUGEN", "夢幻街"],
   0x000E: ["ST_PD_BATTLE", "バトルドライブ"],
-  0x000F: ["ST_AVE6", '6番街 "f00"'],
+  0x000F: ["ST_AVE6", '6番街, "f00"'],
   0x0010: ["ST_AVE10", '10番街, "f01"'],
   0x0011: ["ST_AVE4", '4番街, "f02"'],
   0x0012: ["ST_AVE2", '2番街, "f03"'],

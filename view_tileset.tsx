@@ -25,7 +25,7 @@ export const TilesetViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
 
   return (
     <div class="viewer">
-      <div>
+      <div class="list-pane">
         {tilesets.length > 1 && (
           <select
             value={fileIdx}
