@@ -83,6 +83,7 @@ deno fmt && deno lint && deno check index.tsx
 ```
 
 - `bundle.js` はコミットしない (.gitignore 済み)
+- `bundle.js` には preact (MIT) が入る。公開のワークフローが `THIRD_PARTY_LICENSES.txt` の全文を `bundle.js` の先頭にコメントで付け、ファイルとしても一緒に置く。依存を増やしたら `THIRD_PARTY_LICENSES.txt` と README の表に足す
 - `bokcc/` は decomp の `tools/bokcc` から無改変でコピーしたもので、fmt と lint の対象外 (`deno.jsonc`)
 - ブラウザの確認は、ROM をウィンドウにドロップするか、ファイル選択で開いて行う
 
