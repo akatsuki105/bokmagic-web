@@ -1,21 +1,19 @@
 # Map タブのマップの組み立て
 
-ROM にはマップをまとめたファイルは無く、スクリプトがタイルセット・タイルマップ・BG パレット・Collision Map を順に読み込んでマップを作る。
-Map タブは、スクリプトを静的に解析して読み込み呼び出しを拾い (`analysis.ts`)、ゲームと同じように VRAM と BG を組み立てて重ねる (`map.ts`)。
-個々のフォーマットは [bg.md](bg.md), [collision.md](collision.md), [palette.md](palette.md) を参照。
+ROM にはマップをまとめたファイルは無く、スクリプトがタイルセット・タイルマップ・BG パレット・Collision Map を順に読み込んでマップを作る。 Map タブは、スクリプトを静的に解析して読み込み呼び出しを拾い (`analysis.ts`)、ゲームと同じように VRAM と BG を組み立てて重ねる (`map.ts`)。 個々のフォーマットは [bg.md](bg.md), [collision.md](collision.md), [palette.md](palette.md) を参照。
 
 ## 組み立ての手順
 
 ゲームがマップを作るときに使うスクリプトのサブルーチン (`src/vm_commands.s` の番号)。ツールはこれらの呼び出しを拾う (`script_scan.ts` の `SUB_*`)。
 
-| 番号 | 関数 | 引数 | 効果 |
-| --- | --- | --- | --- |
-| `0x11D4` | `Cmd_LoadTileSet` | `'.t'` BG, `'.d'` ファイル, `'.c'` 部品ID の列, `'.s'` 読み込み先, `'.m'` タイルマップ | 部品のタイルをその場で VRAM に DMA で書く ([bg.md](bg.md)) |
-| `0x7A27` | `Cmd_LoadTileMap` | `'.d'` タイルマップ, `'.t'` BG の構成, `'.n'` レイヤ数, `'.i'` / `'.c'` レイヤの並び | レイヤを BG に割り当て、ファイル内のタイルを VBlank での転送に予約する ([bg.md](bg.md)) |
-| `0xB4B4` | `Cmd_CreateBG` (EntityCreate で呼ぶ) | `'.i'` BG, `'.p'` 優先度, `'.d'` タイルマップ ほか | BG の優先度を決め、毎フレーム BG マップを作り直す `BgMapScroller` を作る |
-| `0x4AE5` | `Entity4AE5_Create` (EntityCreate で呼ぶ) | `'.p'` BG パレットの列 (最大 4) | BG パレット ([palette.md](palette.md)) |
-| `0x30AD` | `Map_LoadMapScripted` | `'.p'` Collision Map, `'.n'` | Collision Map を読む ([collision.md](collision.md))。`'.n'` は使わない |
-| `0x82B3` | `Cmd_82B3` | `'.s'` StageID | `gStat->stageID` を設定する |
+| 番号     | 関数                                      | 引数                                                                                   | 効果                                                                                    |
+| -------- | ----------------------------------------- | -------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------- |
+| `0x11D4` | `Cmd_LoadTileSet`                         | `'.t'` BG, `'.d'` ファイル, `'.c'` 部品ID の列, `'.s'` 読み込み先, `'.m'` タイルマップ | 部品のタイルをその場で VRAM に DMA で書く ([bg.md](bg.md))                              |
+| `0x7A27` | `Cmd_LoadTileMap`                         | `'.d'` タイルマップ, `'.t'` BG の構成, `'.n'` レイヤ数, `'.i'` / `'.c'` レイヤの並び   | レイヤを BG に割り当て、ファイル内のタイルを VBlank での転送に予約する ([bg.md](bg.md)) |
+| `0xB4B4` | `Cmd_CreateBG` (EntityCreate で呼ぶ)      | `'.i'` BG, `'.p'` 優先度, `'.d'` タイルマップ ほか                                     | BG の優先度を決め、毎フレーム BG マップを作り直す `BgMapScroller` を作る                |
+| `0x4AE5` | `Entity4AE5_Create` (EntityCreate で呼ぶ) | `'.p'` BG パレットの列 (最大 4)                                                        | BG パレット ([palette.md](palette.md))                                                  |
+| `0x30AD` | `Map_LoadMapScripted`                     | `'.p'` Collision Map, `'.n'`                                                           | Collision Map を読む ([collision.md](collision.md))。`'.n'` は使わない                  |
+| `0x82B3` | `Cmd_82B3`                                | `'.s'` StageID                                                                         | `gStat->stageID` を設定する                                                             |
 
 VRAM と BG に関わる順序:
 

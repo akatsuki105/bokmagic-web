@@ -1,4 +1,4 @@
-// OBJ (GBA のハードウェアスプライト) の集まりを ImageData に描く
+// OBJ (GBA のハードウェアスプライト) の集まりを画像 (Pixels) に描く
 
 // key: (size << 2) | shape, see SpriteShape in include/sprite_common.h
 export const OBJ_SIZE: Record<number, [w: number, h: number]> = {
@@ -30,8 +30,13 @@ export type Obj = {
   pltt: Uint32Array; // RGBA8888[16], 色0 は透明扱い
 };
 
+// RGBA8888 の画像. ブラウザの ImageData と同じ並びだが、Deno (CLI) でも使えるように自前の型にする
+export type Pixels = { width: number; height: number; data: Uint8ClampedArray<ArrayBuffer> };
+
+export const newPixels = (width: number, height: number): Pixels => ({ width, height, data: new Uint8ClampedArray(width * height * 4) });
+
 export type Rendered = {
-  image: ImageData;
+  image: Pixels;
   originX: number; // image 上の原点の位置
   originY: number;
 };
@@ -54,7 +59,7 @@ export const objBounds = (objs: Obj[]): Bounds => {
 export const renderObjs = (objs: Obj[], bounds: Bounds = objBounds(objs)): Rendered => {
   const width = Math.max(1, bounds.right - bounds.left);
   const height = Math.max(1, bounds.bottom - bounds.top);
-  const image = new ImageData(width, height);
+  const image = newPixels(width, height);
   const out = new Uint32Array(image.data.buffer);
 
   for (const o of objs) {
@@ -83,7 +88,7 @@ export const renderObjs = (objs: Obj[], bounds: Bounds = objBounds(objs)): Rende
 export const renderTileGrid = (tiles: Uint8Array, tileNums: ArrayLike<number>, cols: number, pltt: Uint32Array, transparent0 = true): Rendered => {
   const rows = Math.max(1, Math.ceil(tileNums.length / cols));
   const width = cols * 8;
-  const image = new ImageData(width, rows * 8);
+  const image = newPixels(width, rows * 8);
   const out = new Uint32Array(image.data.buffer);
   for (let k = 0; k < tileNums.length; k++) {
     const base = tileNums[k] * 32;

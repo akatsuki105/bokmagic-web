@@ -21,6 +21,8 @@
     "dev": {
       "dependencies": ["dev:bundle", "dev:server"]
     },
-    "bundle": "deno bundle --platform=browser index.tsx -o bundle.js"
+    "bundle": "deno bundle --platform=browser index.tsx -o bundle.js",
+    // コマンドライン版を 1 ファイルにまとめる (decomp 側などに持っていって deno run で動かす)
+    "cli:bundle": "deno bundle --platform=deno cli/main.ts -o dist/bokmagic.js"
   }
 }

@@ -3,7 +3,7 @@
 
 import { DIR_TILE_MAP, type FileEntry, FileSystem } from "./fs.ts";
 import { decompressLZ77 } from "./lz77.ts";
-import type { Rendered } from "./render.ts";
+import { newPixels, type Rendered } from "./render.ts";
 
 // TilemapLayer
 export type TilemapLayer = {
@@ -118,7 +118,7 @@ export type LayerSource = { map: Tilemap; layer: TilemapLayer; vram: Uint8Array 
 // transparent0 は一番奥のレイヤにだけ効き、それより手前のレイヤの色0 は常に透明
 export const renderComposite = (items: LayerSource[], colors: Uint32Array, transparent0: boolean): Rendered => {
   const width = Math.max(16, ...items.map((s) => s.layer.width * 16)), height = Math.max(16, ...items.map((s) => s.layer.height * 16));
-  const image = new ImageData(width, height);
+  const image = newPixels(width, height);
   const out = new Uint32Array(image.data.buffer);
   items.forEach(({ map, layer, vram }, k) => {
     for (let my = 0; my < layer.height; my++) {
@@ -185,7 +185,7 @@ export const bgDepth = (bg: number, prio: number) => prio * 4 + bg;
 export const renderMetatiles = (map: Tilemap, vram: Uint8Array, colors: Uint32Array, transparent0: boolean, cols = 16): Rendered => {
   const rows = Math.max(1, Math.ceil(map.metatileCount / cols));
   const width = cols * 16;
-  const image = new ImageData(width, rows * 16);
+  const image = newPixels(width, rows * 16);
   const out = new Uint32Array(image.data.buffer);
   for (let mt = 0; mt < map.metatileCount; mt++) drawMetatile(out, width, (mt % cols) * 16, Math.floor(mt / cols) * 16, map, mt, vram, colors, transparent0);
   return { image, originX: 0, originY: 0 };

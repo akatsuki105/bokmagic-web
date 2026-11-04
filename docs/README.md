@@ -46,7 +46,7 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 | ファイル                               | 役目                                                                                      | ドキュメント                       |
 | -------------------------------------- | ----------------------------------------------------------------------------------------- | ---------------------------------- |
 | `rom.ts`, `gba.ts`, `fs.ts`, `lz77.ts` | ROM の読み込み, gFS, LZ77 の展開                                                          | [filesystem.md](rom/filesystem.md) |
-| `render.ts`                            | OBJ やタイルを画像 (`ImageData`) にする                                                   | [sprite.md](rom/sprite.md)         |
+| `render.ts`                            | OBJ やタイルを画像 (`Pixels`: 幅・高さ・RGBA の配列, ブラウザに依存しない) にする         | [sprite.md](rom/sprite.md)         |
 | `components.tsx`                       | 画面の共通部品 (キャンバス, パレット, 数値の増減, 説明 `Desc`, 詳細の表 `InfoTable` など) | このページの「画面の約束事」       |
 | `audio.ts`                             | アプリ全体で 1 つの AudioContext と全体の音量                                             | [sound.md](rom/sound.md)           |
 | `rom_store.ts`                         | 最後に開いた ROM を IndexedDB に保存する (localStorage は容量が足りない)                  | —                                  |
@@ -78,12 +78,17 @@ ROM ファイル (ドロップ / ファイル選択 / IndexedDB に保存した�
 ```sh
 deno task dev      # バンドルを監視しながら http://localhost:8080/ で配信
 deno task bundle   # bundle.js を作るだけ
+deno task cli:bundle  # コマンドライン版を dist/bokmagic.js にまとめる (docs/cli.md)
 deno fmt && deno lint && deno check index.tsx
 ```
 
 - `bundle.js` はコミットしない (.gitignore 済み)
 - `bokcc/` は decomp の `tools/bokcc` から無改変でコピーしたもので、fmt と lint の対象外 (`deno.jsonc`)
 - ブラウザの確認は、ROM をウィンドウにドロップするか、ファイル選択で開いて行う
+
+## コマンドライン版と URL での ROM の受け渡し
+
+ブラウザを操作しなくてもアセットを確かめられるように、JSON と PNG を出すコマンドライン版 (`cli/`) と、URL の `?rom=` で ROM を渡す仕組みがある。使い方は [cli.md](cli.md)。
 
 ## ROM のフォーマット
 

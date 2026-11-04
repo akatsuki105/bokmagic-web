@@ -1,7 +1,6 @@
 # スクリプト (gScriptDirectory)
 
-ゲームのイベントやマップの読み込みは独自 VM のバイトコード (スクリプト) で書かれている。ツールはスクリプトの一覧を読み、bokcc で命令木にして .bokc として表示する。
-さらに命令木を実行せずにたどる静的解析 (ScriptScanner) で、マップを読み込む呼び出しの引数を拾い、Map / Collision タブに使う。
+ゲームのイベントやマップの読み込みは独自 VM のバイトコード (スクリプト) で書かれている。ツールはスクリプトの一覧を読み、bokcc で命令木にして .bokc として表示する。 さらに命令木を実行せずにたどる静的解析 (ScriptScanner) で、マップを読み込む呼び出しの引数を拾い、Map / Collision タブに使う。
 
 ## ROM 上の位置
 
@@ -15,68 +14,68 @@
 
 `script_entries` が可変長なので、それより後ろは `offsets` の位置 (E とする) からの相対で書く。U32J rev1 での実際の位置は decomp の `include/vm.h` の `ScriptDirectory` にある。
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u32 | buildDate | ビルド日時 (Unix 秒) |
-| `0x04` | ScriptOffset[] | script_entries | スクリプトID - 1 で引く。`0xFFFFFFFF` で終わる (U32J は 11539 件) |
-| E + `0x00` | u32 | offsets.script_data | E からの相対。`bytecodeSize` を指す |
-| E + `0x04` | u32 | offsets.string_index | E からの相対。文字列の索引 |
-| E + `0x08` | u32 | offsets.string_data | E からの相対。文字列の本体 |
-| E + `0x0C` | u32 | offsets.unknown | E からの相対 |
-| E + script_data | u32 | bytecodeSize | バイトコードの大きさ |
-| E + script_data + `0x04` | u8[bytecodeSize] | bytecode | スクリプトの本体が並ぶ |
-| その後ろ | u32 | specialScriptSize | |
-| その後ろ | u8[] | specialScriptData | ID を持たない特別なスクリプト (VM_ExecSpecial) |
+| オフセット               | 型               | 名前                 | 意味                                                              |
+| ------------------------ | ---------------- | -------------------- | ----------------------------------------------------------------- |
+| `0x00`                   | u32              | buildDate            | ビルド日時 (Unix 秒)                                              |
+| `0x04`                   | ScriptOffset[]   | script_entries       | スクリプトID - 1 で引く。`0xFFFFFFFF` で終わる (U32J は 11539 件) |
+| E + `0x00`               | u32              | offsets.script_data  | E からの相対。`bytecodeSize` を指す                               |
+| E + `0x04`               | u32              | offsets.string_index | E からの相対。文字列の索引                                        |
+| E + `0x08`               | u32              | offsets.string_data  | E からの相対。文字列の本体                                        |
+| E + `0x0C`               | u32              | offsets.unknown      | E からの相対                                                      |
+| E + script_data          | u32              | bytecodeSize         | バイトコードの大きさ                                              |
+| E + script_data + `0x04` | u8[bytecodeSize] | bytecode             | スクリプトの本体が並ぶ                                            |
+| その後ろ                 | u32              | specialScriptSize    |                                                                   |
+| その後ろ                 | u8[]             | specialScriptData    | ID を持たない特別なスクリプト (VM_ExecSpecial)                    |
 
 ツールが読むのは buildDate, script_entries, script_data, bytecode だけ。文字列と specialScriptData は読まない。
 
 ### ScriptOffset (script_entries の1件)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u24 (bit0-23) | offset | bytecode の先頭からのオフセット |
-| `0x03` | u8 (bit24-31) | varCount | ローカル変数の個数 (スタックフレームの大きさ) |
+| オフセット | 型            | 名前     | 意味                                          |
+| ---------- | ------------- | -------- | --------------------------------------------- |
+| `0x00`     | u24 (bit0-23) | offset   | bytecode の先頭からのオフセット               |
+| `0x03`     | u8 (bit24-31) | varCount | ローカル変数の個数 (スタックフレームの大きさ) |
 
 複数のスクリプトID が同じ offset を指すことがある (同じ実体)。数千件のこともある。
 
 ### ScriptEntry (script.ts の型)
 
-| 名前 | 意味 |
-| --- | --- |
-| id | スクリプトID (script_entries の添字 + 1) |
-| offset | ROM オフセット (= bytecode の位置 + ScriptOffset の bit0-23) |
-| varCount | ScriptOffset の bit24-31 |
+| 名前     | 意味                                                         |
+| -------- | ------------------------------------------------------------ |
+| id       | スクリプトID (script_entries の添字 + 1)                     |
+| offset   | ROM オフセット (= bytecode の位置 + ScriptOffset の bit0-23) |
+| varCount | ScriptOffset の bit24-31                                     |
 
 ### バイトコード
 
 スクリプト1本はブロック命令 (`0x80`) 1つ。命令の種類は先頭バイトの上位ニブルで決まる (`include/vm.h`)。
 
-| 上位ニブル | 名前 | 意味 |
-| --- | --- | --- |
-| `0x00` | 定数 / END | 下位ニブルが定数の型 (`0x0` はブロックや引数列の終わり, `0x1` s16, `0x2` u8, `0x6` u16, `0x7` 文字列, `0x8` u24, `0x9` s32, `0xE` StringRef など) |
-| `0x10` / `0x20` | MEMORY / MEMORY_INDEXED | メモリ参照 (gStat, gWorld, scratch など) |
-| `0x30` | EXPRESSION | 式 (逆ポーランド記法) |
-| `0x40` | PARAMETER | 引数。0 は直前の結果 (r), 1 以上は p0, p1, ... (`VM_ParseParameter`) |
-| `0x50` | LABEL | 1文字の名前付き引数 (`.n = 16` など) と if/switch の節 (`c` `d` `e` `i`) |
-| `0x60` | CONTROL | 制御命令。先頭 u16 が ID |
-| `0x70` | CALL | 別のスクリプトを即値のIDで呼ぶ (`VM_CallScript`) |
-| `0x80` | BLOCK | ブロック |
-| `0x90` | VARIABLE | ローカル変数 v1, v2, ... (`VM_GetVariable`) |
-| `0xA0` | END_EXPRESSION | 式の終わり |
+| 上位ニブル      | 名前                    | 意味                                                                                                                                              |
+| --------------- | ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `0x00`          | 定数 / END              | 下位ニブルが定数の型 (`0x0` はブロックや引数列の終わり, `0x1` s16, `0x2` u8, `0x6` u16, `0x7` 文字列, `0x8` u24, `0x9` s32, `0xE` StringRef など) |
+| `0x10` / `0x20` | MEMORY / MEMORY_INDEXED | メモリ参照 (gStat, gWorld, scratch など)                                                                                                          |
+| `0x30`          | EXPRESSION              | 式 (逆ポーランド記法)                                                                                                                             |
+| `0x40`          | PARAMETER               | 引数。0 は直前の結果 (r), 1 以上は p0, p1, ... (`VM_ParseParameter`)                                                                              |
+| `0x50`          | LABEL                   | 1文字の名前付き引数 (`.n = 16` など) と if/switch の節 (`c` `d` `e` `i`)                                                                          |
+| `0x60`          | CONTROL                 | 制御命令。先頭 u16 が ID                                                                                                                          |
+| `0x70`          | CALL                    | 別のスクリプトを即値のIDで呼ぶ (`VM_CallScript`)                                                                                                  |
+| `0x80`          | BLOCK                   | ブロック                                                                                                                                          |
+| `0x90`          | VARIABLE                | ローカル変数 v1, v2, ... (`VM_GetVariable`)                                                                                                       |
+| `0xA0`          | END_EXPRESSION          | 式の終わり                                                                                                                                        |
 
 制御命令の ID (`bokcc/instruction.ts` の `ControlType`)
 
-| ID | 名前 | 意味 |
-| --- | --- | --- |
-| `0x0D86` | If | 条件が真の最初の節だけを実行する (`VM_Ctrl_If`) |
-| `0x4A6F` | Switch | 最初に一致した case か default の節だけを実行する。fall-through は無い (`VM_Ctrl_Switch`) |
-| `0x121F` | CallIndirect | 実行時に決めたIDでスクリプトを呼ぶ |
-| `0xCD3A` | Return | |
-| `0xC8BB` | LoadMap | 先頭の値 (u16) を次のマップの初期化スクリプトIDにする (`VM_Ctrl_LoadMap`) |
-| `0x9906` | EntityCreate | gCommandList から引いた関数を (u16)ID 付きで呼ぶ (`VM_Ctrl_CreateEntity`) |
-| `0xB745` | SubroutineCall | gCommandList から引いた関数を呼ぶ (`VM_Ctrl_CallSubroutine`) |
-| `0xB96E` | DebugPrint | |
-| `0xD4CB` | SetZoneCallback | |
+| ID       | 名前            | 意味                                                                                      |
+| -------- | --------------- | ----------------------------------------------------------------------------------------- |
+| `0x0D86` | If              | 条件が真の最初の節だけを実行する (`VM_Ctrl_If`)                                           |
+| `0x4A6F` | Switch          | 最初に一致した case か default の節だけを実行する。fall-through は無い (`VM_Ctrl_Switch`) |
+| `0x121F` | CallIndirect    | 実行時に決めたIDでスクリプトを呼ぶ                                                        |
+| `0xCD3A` | Return          |                                                                                           |
+| `0xC8BB` | LoadMap         | 先頭の値 (u16) を次のマップの初期化スクリプトIDにする (`VM_Ctrl_LoadMap`)                 |
+| `0x9906` | EntityCreate    | gCommandList から引いた関数を (u16)ID 付きで呼ぶ (`VM_Ctrl_CreateEntity`)                 |
+| `0xB745` | SubroutineCall  | gCommandList から引いた関数を呼ぶ (`VM_Ctrl_CallSubroutine`)                              |
+| `0xB96E` | DebugPrint      |                                                                                           |
+| `0xD4CB` | SetZoneCallback |                                                                                           |
 
 SubroutineCall / EntityCreate が呼ぶ関数の ID は `src/vm_commands.s` の gCommandList にある。呼ばれた関数は `VM_SeekToNamedArg` / `VM_GetNamedArgValue` で名前付き引数 (ラベル) を読む。
 
@@ -96,13 +95,13 @@ SubroutineCall / EntityCreate が呼ぶ関数の ID は `src/vm_commands.s` の 
 
 ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算し、`WeakMap<ROMFile, Map>` に覚えておく (`memo`)。
 
-| 関数 | 返すもの |
-| --- | --- |
-| `scriptDirectory(rom)` | `parseScriptDirectory` の結果 |
-| `scriptCallers(rom)` | スクリプトID → それを定数で呼んでいる (`0x70`) スクリプトIDの列。全スクリプトの命令木を再帰でたどって集める。同じ offset のスクリプトは最初のIDで1回だけたどるので、呼び出し元として出るのはそのIDだけ |
-| `mapLoads(rom)` | `ScriptScanner.roots()` の各起点を `scan()` し、読み込み呼び出しを種類別 (tilemaps, tilesets, pltts, bgs, collisions, stages) に分けたもの。タイルマップの読み込みが無い起点は捨てる |
-| `collisionLoads(rom)` | 当たり判定マップID (`0x30AD` の `.p`) → それを読み込む呼び出し。同じ呼び出し位置で `.n` も同じものは1つにまとめる。[Collision タブ](collision.md) が使う |
-| `mapEntries(rom)` | Map タブの1項目の列。[map.md](map.md) を参照 |
+| 関数                   | 返すもの                                                                                                                                                                                               |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `scriptDirectory(rom)` | `parseScriptDirectory` の結果                                                                                                                                                                          |
+| `scriptCallers(rom)`   | スクリプトID → それを定数で呼んでいる (`0x70`) スクリプトIDの列。全スクリプトの命令木を再帰でたどって集める。同じ offset のスクリプトは最初のIDで1回だけたどるので、呼び出し元として出るのはそのIDだけ |
+| `mapLoads(rom)`        | `ScriptScanner.roots()` の各起点を `scan()` し、読み込み呼び出しを種類別 (tilemaps, tilesets, pltts, bgs, collisions, stages) に分けたもの。タイルマップの読み込みが無い起点は捨てる                   |
+| `collisionLoads(rom)`  | 当たり判定マップID (`0x30AD` の `.p`) → それを読み込む呼び出し。同じ呼び出し位置で `.n` も同じものは1つにまとめる。[Collision タブ](collision.md) が使う                                               |
+| `mapEntries(rom)`      | Map タブの1項目の列。[map.md](map.md) を参照                                                                                                                                                           |
 
 ## 静的解析 (ScriptScanner)
 
@@ -110,27 +109,27 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 
 ### 拾う呼び出し
 
-| ID | 呼び方 | 関数 (decomp) | 拾う引数 |
-| --- | --- | --- | --- |
-| `0x11D4` | SubroutineCall | Cmd_LoadTileSet | `.t` BG, `.d` タイルセット, `.c` 部品IDの列, `.s` 読み込み先, `.m` タイルマップ ([bg.md](bg.md)) |
-| `0x7A27` | SubroutineCall | Cmd_LoadTileMap | `.d` タイルマップ, `.t` BG の構成, `.n` レイヤ数, `.i` / `.c` レイヤの並び ([bg.md](bg.md)) |
-| `0x30AD` | SubroutineCall | Map_LoadMapScripted | `.p` 当たり判定マップ, `.n` タイルマップ ([collision.md](collision.md)) |
-| `0x82B3` | SubroutineCall | Cmd_82B3 | `.s` StageID (`gStat->stageID` に入る) |
-| `0x4AE5` | EntityCreate | Entity4AE5_Create | `.p` マップの BG パレットの列 (最大4) ([palette.md](palette.md)) |
-| `0xB4B4` | EntityCreate | Cmd_CreateBG | `.i` BG 番号, `.p` BG の優先度, `.d` タイルマップ ([bg.md](bg.md)) |
+| ID       | 呼び方         | 関数 (decomp)       | 拾う引数                                                                                         |
+| -------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| `0x11D4` | SubroutineCall | Cmd_LoadTileSet     | `.t` BG, `.d` タイルセット, `.c` 部品IDの列, `.s` 読み込み先, `.m` タイルマップ ([bg.md](bg.md)) |
+| `0x7A27` | SubroutineCall | Cmd_LoadTileMap     | `.d` タイルマップ, `.t` BG の構成, `.n` レイヤ数, `.i` / `.c` レイヤの並び ([bg.md](bg.md))      |
+| `0x30AD` | SubroutineCall | Map_LoadMapScripted | `.p` 当たり判定マップ, `.n` タイルマップ ([collision.md](collision.md))                          |
+| `0x82B3` | SubroutineCall | Cmd_82B3            | `.s` StageID (`gStat->stageID` に入る)                                                           |
+| `0x4AE5` | EntityCreate   | Entity4AE5_Create   | `.p` マップの BG パレットの列 (最大4) ([palette.md](palette.md))                                 |
+| `0xB4B4` | EntityCreate   | Cmd_CreateBG        | `.i` BG 番号, `.p` BG の優先度, `.d` タイルマップ ([bg.md](bg.md))                               |
 
 `0x30AD` の `.n` はゲーム側では読むだけで使わない (`Map_LoadMapScripted` のコメント)。ツールはこれをタイルマップIDとみなして、当たり判定をどの場面のタイルマップに付けるかを決めている (推測に基づく対応付け)。
 
 1回の呼び出しは `LoadCall` にする。
 
-| 名前 | 意味 |
-| --- | --- |
-| root | 展開を始めたスクリプトID |
-| script | 呼び出しが書かれているスクリプトID |
-| sub | 上の表の ID |
-| address | 呼び出し命令の ROM オフセット |
-| conditional | 定数で決まらない if/switch の節の中にある |
-| args | ラベルの文字 → 値の列。値は下位16ビット、定数で決まらなければ `null` |
+| 名前        | 意味                                                                 |
+| ----------- | -------------------------------------------------------------------- |
+| root        | 展開を始めたスクリプトID                                             |
+| script      | 呼び出しが書かれているスクリプトID                                   |
+| sub         | 上の表の ID                                                          |
+| address     | 呼び出し命令の ROM オフセット                                        |
+| conditional | 定数で決まらない if/switch の節の中にある                            |
+| args        | ラベルの文字 → 値の列。値は下位16ビット、定数で決まらなければ `null` |
 
 ### たどり方
 

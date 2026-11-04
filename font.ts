@@ -2,7 +2,7 @@
 // ゲームが読むのはファイル 0x3F51 だけ (Font_LoadInfo)
 
 import { DIR_FONT, FileSystem } from "./fs.ts";
-import type { Rendered } from "./render.ts";
+import { newPixels, type Rendered } from "./render.ts";
 
 export const FONT_FILE = 0x3F51;
 
@@ -43,7 +43,7 @@ export const renderGlyphs = (font: Font, kind: GlyphKind, cols: number, colors: 
   const [gw, gh] = glyphSize(kind);
   const tilesPerGlyph = (gw / 8) * (gh / 8);
   const width = cols * gw;
-  const image = new ImageData(width, Math.max(1, Math.ceil(count / cols)) * gh);
+  const image = newPixels(width, Math.max(1, Math.ceil(count / cols)) * gh);
   const out = new Uint32Array(image.data.buffer);
   const or = (style & 3) << 2;
   for (let g = 0; g < count; g++) {

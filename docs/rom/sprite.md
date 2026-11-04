@@ -6,7 +6,7 @@
 - AuxSprite: 小道具など。全キャラ分が 1 つの AuxSpriteFile にまとまっている。アニメは持たず、別ディレクトリの AuxAnimFile を外から当てる (`sprite_aux.ts`, `anim_aux.ts`)。
 - Particle: 小さなエフェクト。1 つの ParticleFile の中にグループが 3 つあり、1 コマは OBJ 1 枚。アニメは AuxAnimFile を使い回す (`particle.ts`)。
 
-3 種類とも最後は `render.ts` の `Obj` の配列に分解し、`renderObjs` で `ImageData` に描く。パレットはどれも gObjPlttData (OBJ パレットファイル) の 16 色パレットを plttID で引く ([palette.md](palette.md))。ファイルの探し方 (gFS, `GetFile`) は [filesystem.md](filesystem.md) を参照。
+3 種類とも最後は `render.ts` の `Obj` の配列に分解し、`renderObjs` で `Pixels` (`render.ts`, RGBA の画像) に描く。パレットはどれも gObjPlttData (OBJ パレットファイル) の 16 色パレットを plttID で引く ([palette.md](palette.md))。ファイルの探し方 (gFS, `GetFile`) は [filesystem.md](filesystem.md) を参照。
 
 どのスプライトにどのアニメファイルを当てるかは ROM のデータからは決まらない。ビューワは decomp のソースから拾った表 (`generated/aux_anims.ts`, `generated/particle_refs.ts`) で候補を出しているだけで、パースのコードはこの表に依存しない (AuxAnim の節の「表示での扱い」を参照)。
 
@@ -24,58 +24,58 @@
 
 MainSpriteGfxFile (ヘッダ, 0x20 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | palStart | 基準の OBJ パレット番号。`MainSprite_LoadPose` が MainSprite.plttID の初期値にする |
-| `0x02` | u16 | poseCount | MainSpritePose の数 |
-| `0x04` | u16 | animationCount | MainAnim の数 |
-| `0x06` | u16 | subspriteCount | MainSubsprite の総数 (リポジトリでは未使用) |
-| `0x08` | u16 | cmdCount | MainAnimCmd の総数 (リポジトリでは未使用) |
-| `0x0A` | u16 | tileCount | タイル枚数 (1 枚 32 バイト, 4bpp) |
-| `0x0C` | u32 | poses | MainSpritePose[poseCount] へのオフセット |
-| `0x10` | u32 | anims | MainAnim[animationCount] へのオフセット |
-| `0x14` | u32 | subsprites | MainSubsprite[subspriteCount] へのオフセット |
-| `0x18` | u32 | cmds | MainAnimCmd[cmdCount] へのオフセット |
-| `0x1C` | u32 | tiles | タイル (tileCount × 32 バイト) へのオフセット |
+| オフセット | 型  | 名前           | 意味                                                                               |
+| ---------- | --- | -------------- | ---------------------------------------------------------------------------------- |
+| `0x00`     | u16 | palStart       | 基準の OBJ パレット番号。`MainSprite_LoadPose` が MainSprite.plttID の初期値にする |
+| `0x02`     | u16 | poseCount      | MainSpritePose の数                                                                |
+| `0x04`     | u16 | animationCount | MainAnim の数                                                                      |
+| `0x06`     | u16 | subspriteCount | MainSubsprite の総数 (リポジトリでは未使用)                                        |
+| `0x08`     | u16 | cmdCount       | MainAnimCmd の総数 (リポジトリでは未使用)                                          |
+| `0x0A`     | u16 | tileCount      | タイル枚数 (1 枚 32 バイト, 4bpp)                                                  |
+| `0x0C`     | u32 | poses          | MainSpritePose[poseCount] へのオフセット                                           |
+| `0x10`     | u32 | anims          | MainAnim[animationCount] へのオフセット                                            |
+| `0x14`     | u32 | subsprites     | MainSubsprite[subspriteCount] へのオフセット                                       |
+| `0x18`     | u32 | cmds           | MainAnimCmd[cmdCount] へのオフセット                                               |
+| `0x1C`     | u32 | tiles          | タイル (tileCount × 32 バイト) へのオフセット                                      |
 
 MainSpritePose (20 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | unk_0 | 不明。MainSprite.unk_0 にコピーされる |
-| `0x02` | u16 | subspriteCount | このポーズのサブスプライト数 |
-| `0x04` | s16 | offsetX | 画面座標に足すオフセット (decomp の型は u16, 「未解明」を参照) |
-| `0x06` | s16 | offsetY | 同上 |
-| `0x08` | s16 | boxRight | 画面外判定の矩形 |
-| `0x0A` | s16 | boxBottom | 同上 |
-| `0x0C` | s16 | boxLeft | 同上 |
-| `0x0E` | s16 | boxTop | 同上 |
-| `0x10` | u32 | subspriteOffset | subsprites 配列の先頭から、このポーズの最初の MainSubsprite までのバイト数 |
+| オフセット | 型  | 名前            | 意味                                                                       |
+| ---------- | --- | --------------- | -------------------------------------------------------------------------- |
+| `0x00`     | u16 | unk_0           | 不明。MainSprite.unk_0 にコピーされる                                      |
+| `0x02`     | u16 | subspriteCount  | このポーズのサブスプライト数                                               |
+| `0x04`     | s16 | offsetX         | 画面座標に足すオフセット (decomp の型は u16, 「未解明」を参照)             |
+| `0x06`     | s16 | offsetY         | 同上                                                                       |
+| `0x08`     | s16 | boxRight        | 画面外判定の矩形                                                           |
+| `0x0A`     | s16 | boxBottom       | 同上                                                                       |
+| `0x0C`     | s16 | boxLeft         | 同上                                                                       |
+| `0x0E`     | s16 | boxTop          | 同上                                                                       |
+| `0x10`     | u32 | subspriteOffset | subsprites 配列の先頭から、このポーズの最初の MainSubsprite までのバイト数 |
 
 MainSubsprite (8 バイト, OBJ 1 枚)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u8 | flip | bit2: xflip, bit3: yflip。他のビットは不明 |
-| `0x01` | u8 | shape | SpriteShape = `(size << 2) \| shape` (render の節の `OBJ_SIZE`) |
-| `0x02` | s16 | x | ポーズの原点からの OBJ 左上の X |
-| `0x04` | s16 | y | 同 Y |
-| `0x06` | u16 | tileNum (bit0-11) / paletteNum (bit12-15) | tileNum: tiles 上のタイル番号 (2D シート上の左上)。paletteNum: palStart からの相対パレット番号 |
+| オフセット | 型  | 名前                                      | 意味                                                                                           |
+| ---------- | --- | ----------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `0x00`     | u8  | flip                                      | bit2: xflip, bit3: yflip。他のビットは不明                                                     |
+| `0x01`     | u8  | shape                                     | SpriteShape = `(size << 2) \| shape` (render の節の `OBJ_SIZE`)                                |
+| `0x02`     | s16 | x                                         | ポーズの原点からの OBJ 左上の X                                                                |
+| `0x04`     | s16 | y                                         | 同 Y                                                                                           |
+| `0x06`     | u16 | tileNum (bit0-11) / paletteNum (bit12-15) | tileNum: tiles 上のタイル番号 (2D シート上の左上)。paletteNum: palStart からの相対パレット番号 |
 
 MainAnim (8 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | unk_0 | アニメの識別値。`MainSprite_SetAnim` が MainSprite.unk_12 と比べる |
-| `0x02` | u16 | cmdCount | コマ数 |
-| `0x04` | u32 | cmdOffset | cmds 配列の先頭から、このアニメの最初のコマまでのバイト数 |
+| オフセット | 型  | 名前      | 意味                                                               |
+| ---------- | --- | --------- | ------------------------------------------------------------------ |
+| `0x00`     | u16 | unk_0     | アニメの識別値。`MainSprite_SetAnim` が MainSprite.unk_12 と比べる |
+| `0x02`     | u16 | cmdCount  | コマ数                                                             |
+| `0x04`     | u32 | cmdOffset | cmds 配列の先頭から、このアニメの最初のコマまでのバイト数          |
 
 MainAnimCmd (4 バイト, 1 コマ)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | poseIdx | 当てるポーズ番号 |
-| `0x02` | u16 | duration | 表示フレーム数 (等速のとき) |
+| オフセット | 型  | 名前     | 意味                        |
+| ---------- | --- | -------- | --------------------------- |
+| `0x00`     | u16 | poseIdx  | 当てるポーズ番号            |
+| `0x02`     | u16 | duration | 表示フレーム数 (等速のとき) |
 
 タイルの並び
 
@@ -105,28 +105,28 @@ MainAnimCmd (4 バイト, 1 コマ)
 
 状態
 
-| 名前 | 意味 |
-| --- | --- |
-| poseIdx | 最後に `MainSprite_SetPose` で当てたポーズ |
-| hidden | SPRFLAG_HIDDEN (PLAY_ONCE_HIDE で立つ) |
-| unk_12 | 再生中の MainAnim.unk_0 |
-| animCmdTimer | 今のコマの経過フレーム |
-| animCmdDuration | 今のコマの実フレーム数 |
-| animSpeed | 再生速度。u10.6 固定小数で 64 が 1.0 |
-| animCmdIdx / animCmdLength | 今のコマ番号 / コマ数 |
-| animFlags | 再生フラグ (下表) |
-| playMode | 再生モード (下表) |
-| animEvents | そのフレームに起きたこと (下表) |
+| 名前                       | 意味                                       |
+| -------------------------- | ------------------------------------------ |
+| poseIdx                    | 最後に `MainSprite_SetPose` で当てたポーズ |
+| hidden                     | SPRFLAG_HIDDEN (PLAY_ONCE_HIDE で立つ)     |
+| unk_12                     | 再生中の MainAnim.unk_0                    |
+| animCmdTimer               | 今のコマの経過フレーム                     |
+| animCmdDuration            | 今のコマの実フレーム数                     |
+| animSpeed                  | 再生速度。u10.6 固定小数で 64 が 1.0       |
+| animCmdIdx / animCmdLength | 今のコマ番号 / コマ数                      |
+| animFlags                  | 再生フラグ (下表)                          |
+| playMode                   | 再生モード (下表)                          |
+| animEvents                 | そのフレームに起きたこと (下表)            |
 
 playMode (`PLAYMODE_*`): 0 = PAUSE (止まる), 1 = LOOP (0/2/3 以外はすべてループ扱い), 2 = ONCE_AND_STOP (最後で PAUSE になる), 3 = PLAY_ONCE_HIDE (最後で PAUSE になり、SPRFLAG_HIDDEN を立てる)。
 
 animFlags (`MainAnimPlayFlags16`)
 
-| ビット | 名前 | 意味 |
-| --- | --- | --- |
-| 0 | KEEP_FRAME | 頭出ししない。animCmdIdx, animCmdTimer, animEvents, animSpeed を初期化せず、今の animCmdIdx のコマから続ける |
-| 1 | REVERSE | 逆再生。最後のコマから始め、animCmdIdx を減らし、0 で終端 |
-| 2 | FORCE_POSE | 同じアニメ (unk_12 が一致) を指定してもポーズを当て直す |
+| ビット | 名前       | 意味                                                                                                         |
+| ------ | ---------- | ------------------------------------------------------------------------------------------------------------ |
+| 0      | KEEP_FRAME | 頭出ししない。animCmdIdx, animCmdTimer, animEvents, animSpeed を初期化せず、今の animCmdIdx のコマから続ける |
+| 1      | REVERSE    | 逆再生。最後のコマから始め、animCmdIdx を減らし、0 で終端                                                    |
+| 2      | FORCE_POSE | 同じアニメ (unk_12 が一致) を指定してもポーズを当て直す                                                      |
 
 animEvents (`MainAnimEvents8`): bit0 WILL_END (次のコマ切り替えで終わる), bit1 ENDED (今終わった), bit2 ADVANCED (コマが進んだ)。
 
@@ -190,49 +190,49 @@ animEvents (`MainAnimEvents8`): bit0 WILL_END (次のコマ切り替えで終わ
 
 AuxSpriteFile (ヘッダ 0x18 バイト + entries)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u32 | unk_00 | 0 |
-| `0x04` | s32 | entryCount | エントリ数 (`Video_GetAuxSprite` は符号付きで比べる) |
-| `0x08` | u32 | unk_08 | 0 |
-| `0x0C` | u32 | offsetToTiles | タイル配列へのオフセット |
-| `0x10` | u32 | offsetToMetasprites | AuxSpritePose 配列へのオフセット |
-| `0x14` | u32 | offsetToSubsprites | AuxSubsprite 配列へのオフセット |
-| `0x18` | AuxSpriteEntry[entryCount] | entries | 各スプライトの見出し |
+| オフセット | 型                         | 名前                | 意味                                                 |
+| ---------- | -------------------------- | ------------------- | ---------------------------------------------------- |
+| `0x00`     | u32                        | unk_00              | 0                                                    |
+| `0x04`     | s32                        | entryCount          | エントリ数 (`Video_GetAuxSprite` は符号付きで比べる) |
+| `0x08`     | u32                        | unk_08              | 0                                                    |
+| `0x0C`     | u32                        | offsetToTiles       | タイル配列へのオフセット                             |
+| `0x10`     | u32                        | offsetToMetasprites | AuxSpritePose 配列へのオフセット                     |
+| `0x14`     | u32                        | offsetToSubsprites  | AuxSubsprite 配列へのオフセット                      |
+| `0x18`     | AuxSpriteEntry[entryCount] | entries             | 各スプライトの見出し                                 |
 
 配列の長さはヘッダに無い。タイルは `offsetToMetasprites - offsetToTiles` バイト、ポーズは `(offsetToSubsprites - offsetToMetasprites) / 12` 個として読む (decomp の `static_assert` の配列サイズとも合う)。サブスプライト配列はファイルの終わりまでだが、ポーズから参照される分だけ読む。
 
 AuxSpriteEntry (12 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | id | SpriteID |
-| `0x02` | u8 | flags | AuxSpriteGfxFlags。bit4 = ASGFLAG_BPP8。このゲームでは全て 0 (decomp のコメント) |
-| `0x03` | u8 | unk_03 | 0 |
-| `0x04` | u8 | pw | 画面外判定の矩形の幅 |
-| `0x05` | u8 | ph | 同 高さ |
-| `0x06` | s8 | px | 同 原点からの X オフセット |
-| `0x07` | s8 | py | 同 Y オフセット |
-| `0x08` | u32 | spritesOffset | ポーズ配列の先頭から、このスプライトの最初のポーズまでのバイト数 (12 の倍数) |
+| オフセット | 型  | 名前          | 意味                                                                             |
+| ---------- | --- | ------------- | -------------------------------------------------------------------------------- |
+| `0x00`     | u16 | id            | SpriteID                                                                         |
+| `0x02`     | u8  | flags         | AuxSpriteGfxFlags。bit4 = ASGFLAG_BPP8。このゲームでは全て 0 (decomp のコメント) |
+| `0x03`     | u8  | unk_03        | 0                                                                                |
+| `0x04`     | u8  | pw            | 画面外判定の矩形の幅                                                             |
+| `0x05`     | u8  | ph            | 同 高さ                                                                          |
+| `0x06`     | s8  | px            | 同 原点からの X オフセット                                                       |
+| `0x07`     | s8  | py            | 同 Y オフセット                                                                  |
+| `0x08`     | u32 | spritesOffset | ポーズ配列の先頭から、このスプライトの最初のポーズまでのバイト数 (12 の倍数)     |
 
 AuxSpritePose (12 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u8 | subspriteCount | サブスプライト数 |
-| `0x01` | u8 | tileCount | このポーズのタイル数 (サブスプライトのタイル数の合計) |
-| `0x02` | u16 | plttID | OBJ パレット番号。描画で使われるのは最初のポーズの値だけ (下記) |
-| `0x04` | u32 | tileOffset | タイル配列の先頭から、このポーズの最初のタイルまでのバイト数 (tiles[tileOffset >> 5]) |
-| `0x08` | u32 | subspriteOffset | サブスプライト配列の先頭から、このポーズの最初のサブスプライトまでのバイト数 |
+| オフセット | 型  | 名前            | 意味                                                                                  |
+| ---------- | --- | --------------- | ------------------------------------------------------------------------------------- |
+| `0x00`     | u8  | subspriteCount  | サブスプライト数                                                                      |
+| `0x01`     | u8  | tileCount       | このポーズのタイル数 (サブスプライトのタイル数の合計)                                 |
+| `0x02`     | u16 | plttID          | OBJ パレット番号。描画で使われるのは最初のポーズの値だけ (下記)                       |
+| `0x04`     | u32 | tileOffset      | タイル配列の先頭から、このポーズの最初のタイルまでのバイト数 (tiles[tileOffset >> 5]) |
+| `0x08`     | u32 | subspriteOffset | サブスプライト配列の先頭から、このポーズの最初のサブスプライトまでのバイト数          |
 
 AuxSubsprite (4 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u8 | shape | SpriteShape |
-| `0x01` | u8 | unk_01 | 0 |
-| `0x02` | s8 | x | 原点からの OBJ 左上の X |
-| `0x03` | s8 | y | 同 Y |
+| オフセット | 型 | 名前   | 意味                    |
+| ---------- | -- | ------ | ----------------------- |
+| `0x00`     | u8 | shape  | SpriteShape             |
+| `0x01`     | u8 | unk_01 | 0                       |
+| `0x02`     | s8 | x      | 原点からの OBJ 左上の X |
+| `0x03`     | s8 | y      | 同 Y                    |
 
 ### パースの手順
 
@@ -295,31 +295,31 @@ AuxSprite と Particle が使うアニメ。1 ファイルに複数のアニメ�
 
 AuxAnimFile
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | animationCount | アニメ数 |
-| `0x02` | u16 | cmdCount | ファイル全体のコマ数 (リポジトリでは未使用) |
-| `0x04` | AuxAnim[animationCount] | animations | 4 バイトずつ |
-| ... | AuxAnimCmd[cmdCount] | cmds | コマ列 |
+| オフセット | 型                      | 名前           | 意味                                        |
+| ---------- | ----------------------- | -------------- | ------------------------------------------- |
+| `0x00`     | u16                     | animationCount | アニメ数                                    |
+| `0x02`     | u16                     | cmdCount       | ファイル全体のコマ数 (リポジトリでは未使用) |
+| `0x04`     | AuxAnim[animationCount] | animations     | 4 バイトずつ                                |
+| ...        | AuxAnimCmd[cmdCount]    | cmds           | コマ列                                      |
 
 AuxAnim (4 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u8 | unk_0 (bit0-3) / variantCount (bit4-7) | 下位 4 ビットは常に 0。上位 4 ビットが variant 数。**バイト全体は variant 数 << 4** |
-| `0x01` | u8 | cmdCount | 1 variant のコマ数 |
-| `0x02` | u16 | cmdOffset | ファイル先頭から、このアニメの最初のコマまでのバイト数 |
+| オフセット | 型  | 名前                                   | 意味                                                                                |
+| ---------- | --- | -------------------------------------- | ----------------------------------------------------------------------------------- |
+| `0x00`     | u8  | unk_0 (bit0-3) / variantCount (bit4-7) | 下位 4 ビットは常に 0。上位 4 ビットが variant 数。**バイト全体は variant 数 << 4** |
+| `0x01`     | u8  | cmdCount                               | 1 variant のコマ数                                                                  |
+| `0x02`     | u16 | cmdOffset                              | ファイル先頭から、このアニメの最初のコマまでのバイト数                              |
 
 variant v のコマ列は `cmdOffset + v * cmdCount * 2` から cmdCount 個。variantCount が 0 でも variant 0 のコマは並んでいる。
 
 AuxAnimCmd (u16)
 
-| ビット | 名前 | 意味 |
-| --- | --- | --- |
-| 0-3 | duration | 表示フレーム数 (等速のとき) |
-| 4 | xflip | X 反転 |
-| 5 | yflip | Y 反転 |
-| 6-15 | poseIdx | AuxSprite ならポーズ番号、Particle ならグループ内のコマ番号 |
+| ビット | 名前     | 意味                                                        |
+| ------ | -------- | ----------------------------------------------------------- |
+| 0-3    | duration | 表示フレーム数 (等速のとき)                                 |
+| 4      | xflip    | X 反転                                                      |
+| 5      | yflip    | Y 反転                                                      |
+| 6-15   | poseIdx  | AuxSprite ならポーズ番号、Particle ならグループ内のコマ番号 |
 
 ### パースの手順
 
@@ -346,7 +346,7 @@ AuxAnimPlayFlags (再生フラグ): bit0 XFLIP, bit1 YFLIP, bit2 REVERSE。
 
 - アニメのパネル `AuxAnimPanel` (`view_aux.tsx`) は AuxSprite タブと Particle タブで共通。`particle` が真なら `advanceParticle`、偽なら `advance` で進める。
 - アニメファイルの一覧は 2 つに分ける: decomp のソースで一緒に使われているもの (`generated/aux_anims.ts` の `AUX_ANIM_REFS`, Particle は `generated/particle_refs.ts` の `PARTICLE_ANIM_REFS`) と、その他すべて。候補があれば開いたときに最初の候補を再生する。
-- 各ファイルのラベルには maxPose を出し、`maxPose < poseCount` なら印なし、`maxPose < poses.length` (後ろのエントリのポーズまで使う) なら ` +`、それ以上 (ポーズ配列からはみ出す) なら ` !` を付ける。
+- 各ファイルのラベルには maxPose を出し、`maxPose < poseCount` なら印なし、`maxPose < poses.length` (後ろのエントリのポーズまで使う) なら `+`、それ以上 (ポーズ配列からはみ出す) なら `!` を付ける。
 - 「restart」は AuxAnimState を作り直してから setAnim する。速度は setAnim が 0x40 に戻すので、その後に setAnimSpeed で当て直す。
 - variant が variantCount 以上のとき、ゲームは `cmds + variant * cmdCount` をそのまま読むが、`setAnim` は variant 0 に戻している。
 - **組み合わせの表は UI 専用**。`tools/gen_tables.ts` が decomp のソースを正規表現で拾って作る:
@@ -381,23 +381,23 @@ AuxAnimPlayFlags (再生フラグ): bit0 XFLIP, bit1 YFLIP, bit2 REVERSE。
 
 ParticleFile
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u32 | unk_00 | 不明 |
-| `0x04` | u16 | tileCount | タイル枚数 (このゲームでは 317) |
-| `0x06` | u16 | groupCount | グループ数 (このゲームでは 3) |
-| `0x08` | u32 | offsetToTiles | ファイル先頭からタイルまでのバイト数 |
-| `0x0C` | ParticleGroup[groupCount] | groups | 8 バイトずつ |
+| オフセット | 型                        | 名前          | 意味                                 |
+| ---------- | ------------------------- | ------------- | ------------------------------------ |
+| `0x00`     | u32                       | unk_00        | 不明                                 |
+| `0x04`     | u16                       | tileCount     | タイル枚数 (このゲームでは 317)      |
+| `0x06`     | u16                       | groupCount    | グループ数 (このゲームでは 3)        |
+| `0x08`     | u32                       | offsetToTiles | ファイル先頭からタイルまでのバイト数 |
+| `0x0C`     | ParticleGroup[groupCount] | groups        | 8 バイトずつ                         |
 
 ParticleGroup (8 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | id | グループ ID (`GetParticleGroup` で探す) |
-| `0x02` | u8 | flags | bit4 = PGFLAG_BPP8 (8bpp) |
-| `0x03` | u8 | shape | SpriteShape。1 コマのサイズ |
-| `0x04` | u16 | tile | このグループの先頭タイル番号 |
-| `0x06` | u16 | plttID | `Particle_Add` が当てる OBJ パレット番号 |
+| オフセット | 型  | 名前   | 意味                                     |
+| ---------- | --- | ------ | ---------------------------------------- |
+| `0x00`     | u16 | id     | グループ ID (`GetParticleGroup` で探す)  |
+| `0x02`     | u8  | flags  | bit4 = PGFLAG_BPP8 (8bpp)                |
+| `0x03`     | u8  | shape  | SpriteShape。1 コマのサイズ              |
+| `0x04`     | u16 | tile   | このグループの先頭タイル番号             |
+| `0x06`     | u16 | plttID | `Particle_Add` が当てる OBJ パレット番号 |
 
 コマ番号 poseIdx のタイル番号は `poseIdx * (w/8 * h/8) + tile`。
 
@@ -437,7 +437,7 @@ ParticleGroup (8 バイト)
 
 ## OBJ の描画 (render.ts)
 
-3 種類のスプライトはどれも `Obj` (GBA の OBJ 1 枚分) の配列に分解され、`renderObjs` が 1 枚の `ImageData` に描く。ROM のデータを読む部分ではない。
+3 種類のスプライトはどれも `Obj` (GBA の OBJ 1 枚分) の配列に分解され、`renderObjs` が 1 枚の `Pixels` (`render.ts`, RGBA の画像) に描く。ROM のデータを読む部分ではない。
 
 ### ROM 上の位置
 
@@ -448,38 +448,38 @@ ParticleGroup (8 バイト)
 `OBJ_SIZE`: SpriteShape (`(size << 2) | shape`) → [w, h]。shape 3 (禁止) のキーは無い。
 
 | SpriteShape | サイズ | SpriteShape | サイズ | SpriteShape | サイズ |
-| --- | --- | --- | --- | --- | --- |
-| `0x00` | 8×8 | `0x01` | 16×8 | `0x02` | 8×16 |
-| `0x04` | 16×16 | `0x05` | 32×8 | `0x06` | 8×32 |
-| `0x08` | 32×32 | `0x09` | 32×16 | `0x0A` | 16×32 |
-| `0x0C` | 64×64 | `0x0D` | 64×32 | `0x0E` | 32×64 |
+| ----------- | ------ | ----------- | ------ | ----------- | ------ |
+| `0x00`      | 8×8    | `0x01`      | 16×8   | `0x02`      | 8×16   |
+| `0x04`      | 16×16  | `0x05`      | 32×8   | `0x06`      | 8×32   |
+| `0x08`      | 32×32  | `0x09`      | 32×16  | `0x0A`      | 16×32  |
+| `0x0C`      | 64×64  | `0x0D`      | 64×32  | `0x0E`      | 32×64  |
 
 `Obj` (4bpp の OBJ 1 枚)
 
-| 名前 | 型 | 意味 |
-| --- | --- | --- |
-| x, y | number | 原点からの OBJ 左上の座標 |
-| w, h | number | ピクセル単位のサイズ |
-| hflip, vflip | boolean | OBJ の反転 |
-| tiles | Uint8Array | タイルデータ (4bpp, 32 バイト/枚) |
-| tileNum | number | tiles の何枚目から使うか |
-| tileStride | number | tiles 上で 1 行下のタイルまでの枚数 |
-| pltt | Uint32Array | RGBA8888 の 16 色。色 0 は透明扱い |
+| 名前         | 型          | 意味                                |
+| ------------ | ----------- | ----------------------------------- |
+| x, y         | number      | 原点からの OBJ 左上の座標           |
+| w, h         | number      | ピクセル単位のサイズ                |
+| hflip, vflip | boolean     | OBJ の反転                          |
+| tiles        | Uint8Array  | タイルデータ (4bpp, 32 バイト/枚)   |
+| tileNum      | number      | tiles の何枚目から使うか            |
+| tileStride   | number      | tiles 上で 1 行下のタイルまでの枚数 |
+| pltt         | Uint32Array | RGBA8888 の 16 色。色 0 は透明扱い  |
 
 `tileStride` の値
 
-| 使う側 | 値 | 理由 |
-| --- | --- | --- |
-| MainSprite (`poseToObjs`) | 16 | タイルが横 16 枚の 2D シート |
-| AuxSprite (`auxPoseToObjs`) | w / 8 | 1D (OBJ ごとに詰めて並ぶ) |
-| Particle (`particlePoseObjs`) | w / 8 | 1D |
+| 使う側                        | 値    | 理由                         |
+| ----------------------------- | ----- | ---------------------------- |
+| MainSprite (`poseToObjs`)     | 16    | タイルが横 16 枚の 2D シート |
+| AuxSprite (`auxPoseToObjs`)   | w / 8 | 1D (OBJ ごとに詰めて並ぶ)    |
+| Particle (`particlePoseObjs`) | w / 8 | 1D                           |
 
 ### パースの手順
 
 `renderObjs(objs, bounds = objBounds(objs))` (`render.ts`)
 
 1. `objBounds` で全 OBJ を囲む矩形を作る。原点 (0, 0) は必ず含める。
-2. その大きさの `ImageData` を作り、`objs` の先頭から順に描く (後の OBJ が上書きする = 手前)。
+2. その大きさの `Pixels` を作り、`objs` の先頭から順に描く (後の OBJ が上書きする = 手前)。
 3. 各ピクセルは、反転を考えた OBJ 内の座標 (sx, sy) から `tile = tileNum + (sy >> 3) * tileStride + (sx >> 3)` を求め、`tiles[tile * 32 + (sy & 7) * 4 + ((sx & 7) >> 1)]` の下位 4 ビット (sx が偶数) か上位 4 ビット (奇数) を色番号にする。
 4. 色番号 0 は描かない。tiles の範囲外は飛ばす。
 5. 戻り値 `Rendered` は画像と、画像上の原点の位置 (originX, originY)。`SpriteCanvas` (`components.tsx`) はこれで原点の十字を描く。

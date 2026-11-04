@@ -86,7 +86,7 @@ export const SpriteCanvas: FunctionComponent<{ rendered: Rendered; scale: number
 
   useLayoutEffect(() => {
     const ctx = ref.current?.getContext("2d");
-    ctx?.putImageData(image, 0, 0);
+    if (ctx && image.width > 0 && image.height > 0) ctx.putImageData(new ImageData(image.data, image.width, image.height), 0, 0);
   }, [image]);
 
   const hover = onHover && ((e: MouseEvent) => {

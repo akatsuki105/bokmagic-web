@@ -69,7 +69,7 @@ const App = () => {
     e.preventDefault();
     setRomState(null);
     setError(null);
-    history.pushState(null, "", location.pathname + location.search);
+    history.pushState(null, "", location.pathname); // ?rom= も消して、読み直しても初期画面のままにする
     setTab(tabFromHash());
   };
   const [savedName, setSavedName] = useState<string | null>(null); // IndexedDB に保存してある ROM の名前
@@ -103,11 +103,26 @@ const App = () => {
     clearROM().then(() => setSavedName(null)).catch((e) => console.warn("Failed to clear ROM:", e));
   };
 
-  // 起動時: 保存してある ROM の名前を読み、自動で開く設定なら開く (URL の # のタブと選択はそのまま使う)
+  // URL の ?rom= で渡された ROM を取得して開く (エージェントなどが URL だけでアセットを開けるように)
+  // 相対パスはページの場所から. 手で開いた「前回の ROM」を上書きしないよう IndexedDB には保存しない
+  const openURL = async (url: string) => {
+    try {
+      const res = await fetch(new URL(url, location.href));
+      if (!res.ok) throw new Error(`Failed to fetch ROM: ${res.status} ${res.statusText} (${url})`);
+      setRom(LoadROM(url.split("/").pop() || url, await res.arrayBuffer()));
+      setError(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  // 起動時: ?rom= があればそれを開く. 無ければ保存してある ROM の名前を読み、自動で開く設定なら開く (どちらも URL の # のタブと選択はそのまま使う)
   useEffect(() => {
+    const romURL = new URLSearchParams(location.search).get("rom");
+    if (romURL) openURL(romURL);
     savedROMName().then((name) => {
       setSavedName(name ?? null);
-      if (name && loadAutoOpen()) openSaved();
+      if (name && !romURL && loadAutoOpen()) openSaved();
     }).catch((e) => console.warn("Failed to read saved ROM:", e));
   }, []);
 

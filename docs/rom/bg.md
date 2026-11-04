@@ -1,17 +1,15 @@
 # BG (タイルセット / タイルマップ / BG の割り当て)
 
-BG の絵は、GBA タイル (4bpp, 8x8) を BG VRAM に置き、メタタイル (16x16) の並びで BG マップを作って出す。
-タイルの出どころはタイルセットの部品 (`tileset.ts`) か、タイルマップファイル内のタイル (`tilemap.ts`) のどちらか。
-どの BG に載せ、VRAM のどこにタイルを置くかはファイルではなくスクリプトの引数が決める。
+BG の絵は、GBA タイル (4bpp, 8x8) を BG VRAM に置き、メタタイル (16x16) の並びで BG マップを作って出す。 タイルの出どころはタイルセットの部品 (`tileset.ts`) か、タイルマップファイル内のタイル (`tilemap.ts`) のどちらか。 どの BG に載せ、VRAM のどこにタイルを置くかはファイルではなくスクリプトの引数が決める。
 
 ## ROM 上の位置
 
 どちらも gFS のディレクトリから引く ([filesystem.md](filesystem.md))。番地は U32J rev1 のもの (decomp の `src/data/*.s`)。
 
-| もの | ディレクトリID (`fs.ts`) | decomp のシンボル | ファイル数 |
-| --- | --- | --- | --- |
-| タイルセット | `DIR_TILESET` = `0xCEEF` | `gTilesetsDirectory` (`0x0881882C`) | 1 (ID `0x8E32`, `TilesetFile0` = `0x08818848`) |
-| タイルマップ | `DIR_TILE_MAP` = `0xC091` | `gTilemapDirectory` (`0x085B26E4`) | 279 |
+| もの         | ディレクトリID (`fs.ts`)  | decomp のシンボル                   | ファイル数                                     |
+| ------------ | ------------------------- | ----------------------------------- | ---------------------------------------------- |
+| タイルセット | `DIR_TILESET` = `0xCEEF`  | `gTilesetsDirectory` (`0x0881882C`) | 1 (ID `0x8E32`, `TilesetFile0` = `0x08818848`) |
+| タイルマップ | `DIR_TILE_MAP` = `0xC091` | `gTilemapDirectory` (`0x085B26E4`)  | 279                                            |
 
 - タイルセットはゲーム全体で 1 ファイル (`0x8E32`) だけで、`TileSetPart` (部品) ごとにスクリプトから読み込む。U32J の値は partCount 257, tileRefCount 111526, tileCount 53062
 - タイルマップは LZ77 で圧縮されていることがある。先頭が `"MP"` なら非圧縮 (`GetTilemapFile`)
@@ -22,50 +20,50 @@ BG の絵は、GBA タイル (4bpp, 8x8) を BG VRAM に置き、メタタイル
 
 ### TileSetFile (`include/tilesets.h` の `TileSet`)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | partCount | 部品の数 |
-| `0x02` | u16 | unk_2 | 不明 (decomp: padding?)。U32J では 1 |
-| `0x04` | u32 | tileRefCount | refs の要素数 (コードでは `refCount`) |
-| `0x08` | u32 | tileCount | tiles の枚数 |
-| `0x0C` | u32 | parts | `TileSetPart[partCount]` へのオフセット |
-| `0x10` | u32 | refs | `u16[tileRefCount]` へのオフセット。各値は tiles の何枚目か |
-| `0x14` | u32 | tiles | 4bpp タイル (`32 * tileCount` バイト) へのオフセット |
+| オフセット | 型  | 名前         | 意味                                                        |
+| ---------- | --- | ------------ | ----------------------------------------------------------- |
+| `0x00`     | u16 | partCount    | 部品の数                                                    |
+| `0x02`     | u16 | unk_2        | 不明 (decomp: padding?)。U32J では 1                        |
+| `0x04`     | u32 | tileRefCount | refs の要素数 (コードでは `refCount`)                       |
+| `0x08`     | u32 | tileCount    | tiles の枚数                                                |
+| `0x0C`     | u32 | parts        | `TileSetPart[partCount]` へのオフセット                     |
+| `0x10`     | u32 | refs         | `u16[tileRefCount]` へのオフセット。各値は tiles の何枚目か |
+| `0x14`     | u32 | tiles        | 4bpp タイル (`32 * tileCount` バイト) へのオフセット        |
 
 ### TileSetPart (8 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | id | 部品ID。`Cmd_LoadTileSet` の `'.c'` で指す |
-| `0x02` | u16 | tileCount | この部品が VRAM に並べるタイルの数 |
-| `0x04` | u32 | startIndex | refs の先頭からの**バイト**オフセット (要素番号ではない)。`Video_LoadTileSetParts` が `(u8*)refs + startIndex` として使う |
+| オフセット | 型  | 名前       | 意味                                                                                                                      |
+| ---------- | --- | ---------- | ------------------------------------------------------------------------------------------------------------------------- |
+| `0x00`     | u16 | id         | 部品ID。`Cmd_LoadTileSet` の `'.c'` で指す                                                                                |
+| `0x02`     | u16 | tileCount  | この部品が VRAM に並べるタイルの数                                                                                        |
+| `0x04`     | u32 | startIndex | refs の先頭からの**バイト**オフセット (要素番号ではない)。`Video_LoadTileSetParts` が `(u8*)refs + startIndex` として使う |
 
 部品が VRAM に並べる k 枚目のタイルは `tiles[refs[startIndex / 2 + k]]`。同じタイルを複数の部品が参照できる。
 
 ### TilemapFile (`include/tilemap.h` の `Tilemaps`)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | char[4] | magic | `"MP\0\0"` |
-| `0x04` | u16 | layerCount | レイヤ数 |
-| `0x06` | u16 | tileCount | ファイル内の GBA タイルの数 |
-| `0x08` | u16 | metatileCount | メタタイルの数 |
-| `0x0A` | u16 | loadOffset | ファイル内のタイルを置く VRAM 上の位置 (タイル単位)。`Cmd_LoadTileSet` の `'.m'` もこの値を使う |
-| `0x0C` | u32 | layers | `TilemapLayer[layerCount]` へのオフセット |
-| `0x10` | u32 | tiles | タイル (`32 * tileCount` バイト) へのオフセット。**0 ならファイル内にタイルは無い** (タイルはスクリプトがタイルセットから読む) |
-| `0x14` | u32 | metatiles | `BgMapEntry[metatileCount * 4]` へのオフセット |
+| オフセット | 型      | 名前          | 意味                                                                                                                           |
+| ---------- | ------- | ------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `0x00`     | char[4] | magic         | `"MP\0\0"`                                                                                                                     |
+| `0x04`     | u16     | layerCount    | レイヤ数                                                                                                                       |
+| `0x06`     | u16     | tileCount     | ファイル内の GBA タイルの数                                                                                                    |
+| `0x08`     | u16     | metatileCount | メタタイルの数                                                                                                                 |
+| `0x0A`     | u16     | loadOffset    | ファイル内のタイルを置く VRAM 上の位置 (タイル単位)。`Cmd_LoadTileSet` の `'.m'` もこの値を使う                                |
+| `0x0C`     | u32     | layers        | `TilemapLayer[layerCount]` へのオフセット                                                                                      |
+| `0x10`     | u32     | tiles         | タイル (`32 * tileCount` バイト) へのオフセット。**0 ならファイル内にタイルは無い** (タイルはスクリプトがタイルセットから読む) |
+| `0x14`     | u32     | metatiles     | `BgMapEntry[metatileCount * 4]` へのオフセット                                                                                 |
 
 ヘッダの後には layers, tiles, metatiles, 各レイヤの mtmap が並ぶ (decomp のコメント)。
 
 ### TilemapLayer (12 バイト)
 
-| オフセット | 型 | 名前 | 意味 |
-| --- | --- | --- | --- |
-| `0x00` | u16 | width | 幅 (メタタイル単位) |
-| `0x02` | u16 | height | 高さ (メタタイル単位) |
-| `0x04` | u16 | id | レイヤID。`Cmd_LoadTileMap` の `'.c'` がこの値でレイヤを探す (`FUN_08000c84`) |
-| `0x06` | u16 | unk_6 | 不明 (decomp: padding?) |
-| `0x08` | u32 | mtmap | `u16[width * height]` (メタタイル番号) へのオフセット (ファイル先頭から) |
+| オフセット | 型  | 名前   | 意味                                                                          |
+| ---------- | --- | ------ | ----------------------------------------------------------------------------- |
+| `0x00`     | u16 | width  | 幅 (メタタイル単位)                                                           |
+| `0x02`     | u16 | height | 高さ (メタタイル単位)                                                         |
+| `0x04`     | u16 | id     | レイヤID。`Cmd_LoadTileMap` の `'.c'` がこの値でレイヤを探す (`FUN_08000c84`) |
+| `0x06`     | u16 | unk_6  | 不明 (decomp: padding?)                                                       |
+| `0x08`     | u32 | mtmap  | `u16[width * height]` (メタタイル番号) へのオフセット (ファイル先頭から)      |
 
 ### メタタイルと mtmap
 
@@ -78,28 +76,28 @@ index = ((my >> 4) * (width >> 4) + (mx >> 4)) * 256 + (my & 15) * 16 + (mx & 15
 
 ### BgMapEntry (u16, `include/gba/types.h`)
 
-| ビット | 意味 |
-| --- | --- |
-| 0-9 | タイル番号 (BG のキャラクタブロックの先頭から) |
-| 10 | 左右反転 |
-| 11 | 上下反転 |
-| 12-15 | パレット番号 (16 色 x 16 行の何行目か) |
+| ビット | 意味                                           |
+| ------ | ---------------------------------------------- |
+| 0-9    | タイル番号 (BG のキャラクタブロックの先頭から) |
+| 10     | 左右反転                                       |
+| 11     | 上下反転                                       |
+| 12-15  | パレット番号 (16 色 x 16 行の何行目か)         |
 
 ### BG の構成 (`Cmd_LoadTileMap` の `'.t'`)
 
 `Cmd_LoadTileMap` (`0x7A27`) は `'.d'` のタイルマップを `Video_SetupBGLayout(layout = '.t', ..., count = '.n', indices)` に渡す。`'.t'` の既定値は 1, `'.n'` の既定値は 1。
 
-| `'.t'` | 使う BG (k = 0, 1, 2 の順) | キャラクタブロック | ファイル内タイルの転送先 (BG VRAM 先頭から) |
-| --- | --- | --- | --- |
-| 0 | BG0 | 2 (`0x8000`) | `0x8000` (loadOffset を見ない) |
-| 1 | BG2, BG3 | 0 | `loadOffset * 32` |
-| 2 | BG3 | 0 | `loadOffset * 32` |
-| 3 | BG1 | 0 | `loadOffset * 32` |
-| 4 | BG1, BG3 | 0 | `loadOffset * 32` |
-| 5 | BG2, BG1 | 0 | `loadOffset * 32` |
-| 6 | BG1 | 2 (`0x8000`) | `0x8000` (loadOffset を見ない) |
-| 7 | BG2, BG3, BG1 | 0 | `loadOffset * 32` |
-| 8 以上 | なし (BG2 のキャラクタブロックを 0 にするだけ) | 0 | `0` |
+| `'.t'` | 使う BG (k = 0, 1, 2 の順)                     | キャラクタブロック | ファイル内タイルの転送先 (BG VRAM 先頭から) |
+| ------ | ---------------------------------------------- | ------------------ | ------------------------------------------- |
+| 0      | BG0                                            | 2 (`0x8000`)       | `0x8000` (loadOffset を見ない)              |
+| 1      | BG2, BG3                                       | 0                  | `loadOffset * 32`                           |
+| 2      | BG3                                            | 0                  | `loadOffset * 32`                           |
+| 3      | BG1                                            | 0                  | `loadOffset * 32`                           |
+| 4      | BG1, BG3                                       | 0                  | `loadOffset * 32`                           |
+| 5      | BG2, BG1                                       | 0                  | `loadOffset * 32`                           |
+| 6      | BG1                                            | 2 (`0x8000`)       | `0x8000` (loadOffset を見ない)              |
+| 7      | BG2, BG3, BG1                                  | 0                  | `loadOffset * 32`                           |
+| 8 以上 | なし (BG2 のキャラクタブロックを 0 にするだけ) | 0                  | `0`                                         |
 
 - 1, 4, 5 は `'.n'` が 2 のときだけ 2 つ目の BG を使う。7 は `'.n'` によらず 3 つ使う
 - k 番目の BG に載せるレイヤは、`k < '.n'` なら `indices[k]`、そうでなければ k。`indices` は `'.i'` の値 (足りない分は 0)、`'.i'` が無く `'.c'` があればレイヤID から引いた番号 (見つからなければ 0, 足りない分は k)、どちらも無ければ `[0, 1, 2, 3]`
