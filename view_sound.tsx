@@ -42,8 +42,12 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const songs = useMemo(() => (table === undefined ? [] : readSongTable(rom.data, table)), [rom, table]);
   const empty = useMemo(() => new Set(songs.filter((s) => readSongHeader(rom.data, s.header).trackCount === 0).map((s) => s.index)), [rom, songs]);
   const [selected, setSelected] = useState<SongEntry | undefined>(songs[hashID("sound") ?? 1] ?? songs[0]);
+  // 一覧でダブルクリックした曲を鳴らす要求. n はダブルクリックのたびに増やす (同じ曲をもう一度ダブルクリックしたら頭から鳴らし直す)
+  // 別の曲に移ったら消す (戻ってきたときに勝手に鳴らさないように)
+  const [playReq, setPlayReq] = useState<{ index: number; n: number } | null>(null);
   useHashID("sound", (id) => {
     if (songs[id]) setSelected(songs[id]);
+    setPlayReq((r) => (r?.index === id ? r : null));
   });
   const [repeat, setRepeat] = useState(false); // 繰り返し再生 (曲を切り替えても保つ)
 
@@ -54,11 +58,21 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
       <ul class="sprite-list">
         {songs.map((s) => (
           <li key={s.index} class={s === selected ? "selected" : ""}>
-            <a href={`#sound/${hex4(s.index)}`} class={empty.has(s.index) ? "dim" : ""}>{songLabel(s.index)}</a>
+            <a
+              href={`#sound/${hex4(s.index)}`}
+              class={empty.has(s.index) ? "dim" : ""}
+              onMouseDown={(e) => e.detail > 1 && e.preventDefault()} // ダブルクリックで文字が選択されないように
+              onDblClick={() => {
+                setSelected(s);
+                setPlayReq((r) => ({ index: s.index, n: (r?.n ?? 0) + 1 }));
+              }}
+            >
+              {songLabel(s.index)}
+            </a>
           </li>
         ))}
       </ul>
-      {selected && <SongView key={selected.index} rom={rom} song={selected} opts={playOptions(engine)} repeat={repeat} setRepeat={setRepeat} />}
+      {selected && <SongView key={selected.index} rom={rom} song={selected} opts={playOptions(engine)} repeat={repeat} setRepeat={setRepeat} playReq={playReq?.index === selected.index ? playReq.n : 0} />}
     </div>
   );
 };
@@ -66,7 +80,8 @@ export const SoundViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
 const formatTime = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, "0")}`;
 
 // repeat: 書き出した PCM の最後まで来たら最初から鳴らし直す (曲データのループとは別)
-const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderOptions; repeat: boolean; setRepeat: (v: boolean) => void }> = ({ rom, song, opts, repeat, setRepeat }) => {
+// playReq: 0 でなければ、変わるたびに頭から鳴らす (一覧でのダブルクリック)
+const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderOptions; repeat: boolean; setRepeat: (v: boolean) => void; playReq: number }> = ({ rom, song, opts, repeat, setRepeat, playReq }) => {
   const header = useMemo(() => readSongHeader(rom.data, song.header), [rom, song]);
   const [loops, setLoops] = useState(1);
   const [rendered, setRendered] = useState<Rendered | null>(null);
@@ -142,6 +157,10 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
     src.loop = repeat;
     startRef.current = { at: audioOutput().ctx.currentTime, offset: p };
   }, [repeat]);
+
+  useEffect(() => {
+    if (playReq && header.trackCount > 0) start(0);
+  }, [playReq]);
 
   const pause = () => {
     if (srcRef.current) setPos(Math.min(current(), duration));
