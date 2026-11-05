@@ -7,7 +7,7 @@ import { FONT_FILE, type GlyphKind, glyphSize, parseFonts, renderGlyphs } from "
 import { parseBgPlttFiles } from "./bgpltt.ts";
 import { HANKAKU_CHARS, ZENKAKU_CHARS } from "./generated/charmap.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { AssetView, bgpLabel, Card, hex4, InfoTable, NumberStepper, SpriteCanvas, Swatches } from "./components.tsx";
+import { AssetView, bgpName, Card, Check, CursorCard, Field, Fields, hex4, InfoTable, NumberStepper, Segmented, Slider, SpriteCanvas, Swatches } from "./components.tsx";
 
 // Font_SetPltt が 14・15 本目を差し替えるのに使う BG パレット (0: BGP_529C, 1: BGP_539C)
 const FONT_PLTTS = [0x529C, 0x539C];
@@ -72,49 +72,60 @@ export const FontViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
           />
         }
       >
-        <Card title="パレット">
-          <div class="controls">
-            {plttFiles.map((id) => (
-              <label key={id}>
-                <input type="radio" name="font-pltt" checked={plttFile === id} onChange={() => setPlttFile(id)} /> {bgpLabel(id, false)} (Font_SetPltt({FONT_PLTTS.indexOf(id)}))
-              </label>
-            ))}
-          </div>
-          <div class="controls">
-            {plttFiles.length > 0 ? <NumberStepper label="palette" value={row} min={0} max={15} onChange={setRow} /> : <span>この ROM にはフォント用の BG パレット ({FONT_PLTTS.map((id) => hex4(id)).join(", ")}) が無いので、灰色で描きます</span>}
-          </div>
-          <div class="controls">
-            <Swatches colors={colors} start={0} />
-          </div>
+        <Card title="パレット" tip={`Font_SetPltt(0) が ${hex4(FONT_PLTTS[0])}、Font_SetPltt(1) が ${hex4(FONT_PLTTS[1])} の 14・15 本目を差し替える. 文字は 15 本目で描く`}>
+          <Fields>
+            {plttFiles.length > 0
+              ? (
+                <>
+                  <Field label="ファイル">
+                    <Segmented options={plttFiles.map((id) => [id, bgpName(id) ?? hex4(id)] as const)} value={plttFile ?? -1} onChange={setPlttFile} />
+                  </Field>
+                  <Field label="行" title="Font_DrawHankakuChar / Font_DrawZenkakuChar は常に 15 本目で描く">
+                    <NumberStepper value={row} min={0} max={15} onChange={setRow} />
+                  </Field>
+                </>
+              )
+              : (
+                <Field label="ファイル">
+                  <span class="note">この ROM にはフォント用の BG パレット ({FONT_PLTTS.map((id) => hex4(id)).join(", ")}) が無いので、灰色で描きます</span>
+                </Field>
+              )}
+            <Field label="色">
+              <Swatches colors={colors} start={0} />
+            </Field>
+          </Fields>
         </Card>
         <Card title="表示">
-          <div class="controls">
-            <NumberStepper label="style" value={style} min={0} max={3} onChange={setStyle} />
-            <NumberStepper label="columns" value={cols} min={1} max={64} onChange={setCols} />
-          </div>
-          <div class="controls">
-            <label>
-              scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-            </label>
-            <label>
-              <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
-            </label>
-          </div>
+          <Fields>
+            <Field label="スタイル" title="style: Font_AcquireGlyph が各ドットに style << 2 を OR する. 0: 通常, 1: <WEIGHT> <ALTER>, 2: <NONSEL> <UVMOJI>, 3: ゲームでは使わない">
+              <Segmented options={[[0, "0"], [1, "1"], [2, "2"], [3, "3"]] as const} value={style} onChange={setStyle} />
+            </Field>
+            <Field label="横の字数">
+              <Slider value={cols} min={1} max={64} onChange={setCols} />
+            </Field>
+            <Field label="拡大">
+              <Slider value={scale} min={1} max={8} onChange={setScale} format={(v) => `${v}x`} />
+            </Field>
+            <Field label="Overlay">
+              <Check checked={grid} onChange={setGrid}>Grid</Check>
+            </Field>
+          </Fields>
         </Card>
-        <Card title="カーソル">
-          <p class="mono hover-line">
-            {hover >= 0 && hover < count && `#${hover} (0x${hover.toString(16).toUpperCase()})` + (hasDecompTables() ? ` code ${codeOf(kind, hover)}: ${chars[hover] ?? "(charmap に無し)"}` : " (この作品の文字コードは分かっていないので、コードと文字は出しません)")}
-          </p>
-        </Card>
-        <Card title="情報">
+        <CursorCard
+          rows={hover >= 0 && hover < count
+            ? [
+              ["glyph", `${hover} (0x${hover.toString(16).toUpperCase()})`],
+              ...(hasDecompTables() ? [["code", codeOf(kind, hover)], ["char", chars[hover] ?? "(charmap に無し)"]] as [string, string][] : [["code", "この作品の文字コードは分かっていません"]] as [string, string][]),
+            ]
+            : null}
+          minRows={3}
+        />
+        <Card title="Metadata">
           <InfoTable
             rows={[
-              ["file", hex4(font.id)],
-              ["glyph size", gw === 12 ? "12x12 (タイルに分けない, 72 bytes)" : `${gw}x${gh} (${(gw / 8) * (gh / 8)} tiles)`],
-              ["glyphs", count],
-              ["hankaku", font.hankakuCount],
-              ["zenkaku", font.zenkakuCount],
-              ["palette", plttFile === undefined ? "灰色 (ROM に無い)" : `${bgpLabel(plttFile, false)} row ${row}`],
+              ["hankaku", `${font.hankakuCount} 字, 8x16 px`, "半角 (タイル 2 枚)"],
+              ["zenkaku", `${font.zenkakuCount} 字, ${font.zenkakuSize}x${font.zenkakuSize} px`, font.zenkakuSize === 12 ? "全角 (12x12 をタイルに分けず 72 バイトで持つ)" : "全角 (タイル 4 枚)"],
+              ["file", hex4(font.id), "ゲームが読むフォントファイル (Font_LoadInfo)"],
             ]}
           />
         </Card>

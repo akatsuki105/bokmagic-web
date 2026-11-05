@@ -2,7 +2,7 @@
 // ファイル単体で分かることだけを表示する. タイルの読み込み元とパレットはファイルからは決まらないので手で選ぶ
 // スクリプトが決める組み合わせ (タイルセット部品, パレット, BG, 当たり判定) で見るのは Map タブ
 
-import { FunctionComponent } from "preact";
+import { Fragment, type FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import { isSupported, type ROMFile } from "./rom.ts";
 import { type FileEntry } from "./fs.ts";
@@ -10,19 +10,15 @@ import { mtmapIndex, parseTilemap, putTiles, renderLayers, renderMetatiles, type
 import { parseTileSets, partTiles, type TileSet } from "./tileset.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { GRAYSCALE_PLTT, renderTileGrid } from "./render.ts";
-import { mapEntries } from "./analysis.ts";
-import { mapHref } from "./view_map.tsx";
-import { TILEMAP_NAMES } from "./generated/names.ts";
+import { collisionLoads, mapEntries } from "./analysis.ts";
+import { COLLISION_NAMES, TILEMAP_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { AssetView, type BgPlttChoice, BgPlttSelect, Card, hashID, hex4, InfoTable, NumberStepper, SpriteCanvas, useHashID } from "./components.tsx";
+import { AssetView, type BgPlttChoice, BgPlttSelect, Card, Check, CursorCard, Field, Fields, hashID, hex4, idLabel, type InfoRow, InfoTable, MapLink, NameRef, NumberStepper, Segmented, Slider, SpriteCanvas, ToggleList, UsedByCard, useHashID, type UseRef } from "./components.tsx";
 
 export const tilemapHref = (id: number) => `#tilemap/${hex4(id)}`;
 
-export const tilemapLabel = (id: number, withDesc = true) => {
-  const name = decomp(TILEMAP_NAMES)[id];
-  if (!name) return hex4(id);
-  return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
-};
+export const tilemapLabel = (id: number, withDesc = true) => idLabel(id, decomp(TILEMAP_NAMES)[id], withDesc);
+export const tilemapName = (id: number) => decomp(TILEMAP_NAMES)[id]?.[0];
 
 // タイルの読み込み元
 // own: ファイル内のタイル, part: 手で選んだタイルセット部品 (set はタイルセットの何個目か. U32J は 1 個だけ, U3IJ は 11 個)
@@ -73,10 +69,19 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; sets: Til
   const map = useMemo(() => parseTilemap(rom.data, entry), [rom, entry]);
   // このタイルマップを読み込む Map (スクリプトが読めない作品では探さない)
   const scripted = isSupported(rom, "script");
-  const maps = useMemo(() => scripted ? mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === map.id))).map((e) => e.root) : [], [rom, map]);
+  // Used by: このタイルマップを読み込む Map と、'.n' でこのタイルマップを対にしている Collision Map
+  const usedBy = useMemo((): UseRef[] => {
+    if (!scripted) return [];
+    const maps = mapEntries(rom).filter((e) => e.scenes.some((s) => s.tilemaps.some((c) => c.args.d?.[0] === map.id)));
+    const cols = [...collisionLoads(rom)].filter(([, calls]) => calls.some((c) => c.args.n?.[0] === map.id)).map(([id]) => id);
+    return [
+      ...maps.map((e): UseRef => ({ key: `m${e.root}`, kind: "Map", link: <MapLink root={e.root} stage={e.stage} /> })),
+      ...cols.map((id): UseRef => ({ key: `c${id}`, kind: "Collision", link: <NameRef id={id} name={decomp(COLLISION_NAMES)[id]?.[0]} href={`#collision/${hex4(id)}`} />, detail: "対の当たり判定 ('.n' からの推測)" })),
+    ];
+  }, [rom, map]);
   const allParts = useMemo(() => sets.flatMap((ts, set) => ts.parts.map((_, part) => ({ set, part }))), [sets]);
   const partOf = (r: PartRef) => sets[r.set].parts[r.part];
-  const partLabel = (r: PartRef) => (sets.length > 1 ? `${hex4(sets[r.set].id)} ` : "") + `#${r.part} ${hex4(partOf(r).id)}`;
+  const partLabel = (r: PartRef) => (sets.length > 1 ? `${hex4(sets[r.set].id)} / ` : "") + hex4(partOf(r).id);
   // 既定の読み込み元: ファイル内のタイル, 無ければ tileCount が同じ部品
   const sameCount = useMemo(() => allParts.filter((r) => partOf(r).tileCount === map.tileCount), [allParts, map]);
   const [src, setSrc] = useState<TileSource>(map.tiles ? { kind: "own" } : sameCount[0] ? { kind: "part", ...sameCount[0] } : { kind: "none" });
@@ -105,10 +110,10 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; sets: Til
   return (
     <AssetView title={tilemapLabel(map.id, false)} desc={decomp(TILEMAP_NAMES)[map.id]?.[1]} stage={<SpriteCanvas rendered={rendered} scale={scale} grid={grid ? (view === "tiles" ? 8 : 16) : undefined} onHover={(x, y) => setHover([x, y])} />}>
       <Card title="読み込み元">
-        <div class="controls">
-          <label>
-            tiles{" "}
+        <Fields>
+          <Field label="タイル" title={map.tiles ? "ファイル内のタイル" : "タイルはファイルに無いので、tileCount が同じ部品を既定で当てている (ゲームでの組み合わせはスクリプトが決める)"}>
             <select
+              class="wide"
               value={src.kind === "part" ? partValue(src) : src.kind}
               onChange={(e) => {
                 const v = e.currentTarget.value;
@@ -125,100 +130,96 @@ const TilemapView: FunctionComponent<{ rom: ROMFile; entry: FileEntry; sets: Til
                 {allParts.map((r) => (sameCount.includes(r) ? null : <option key={partValue(r)} value={partValue(r)}>{`${partLabel(r)} (${partOf(r).tileCount})`}</option>))}
               </optgroup>
             </select>
-          </label>
+          </Field>
           <BgPlttSelect files={bgFiles} value={pltt} onChange={setPltt} rowSelectable={false} />
-        </div>
+        </Fields>
       </Card>
+      {view === "layer" && (
+        <Card title="レイヤ" tip="描く順に並べる (上が手前). 番号はファイル内のレイヤの番号で、Tilemap タブでは大きいほど手前に描く (Map ではどの BG に載るかで決まる). 大きさはメタタイル (16px) 単位">
+          <ToggleList
+            items={map.layers.map((l, i) => ({
+              key: i,
+              label: `レイヤ ${i}`,
+              detail: `${l.width}x${l.height} メタタイル (${l.width * 16}x${l.height * 16} px), id ${hex4(l.id)}`,
+              checked: visible[i],
+              onChange: (on: boolean) => setVisible((cur) => cur.map((v, k) => (k === i ? on : v))),
+            })).reverse()}
+          />
+        </Card>
+      )}
       <Card title="表示">
-        <div class="controls">
-          {(["layer", "metatiles", "tiles"] as const).map((v) => (
-            <label key={v}>
-              <input type="radio" name="tilemap-view" checked={view === v} onChange={() => setView(v)} /> {v === "layer" ? "レイヤ" : v === "metatiles" ? "メタタイル一覧" : "GBA タイル一覧"}
-            </label>
-          ))}
-        </div>
-        <div class="controls">
-          {view === "layer" && (
-            <span class="stepper">
-              layer {map.layers.map((l, i) => (
-                <label key={i}>
-                  <input
-                    type="checkbox"
-                    checked={visible[i]}
-                    onChange={(e) => {
-                      const checked = e.currentTarget.checked;
-                      setVisible((cur) => cur.map((v, k) => (k === i ? checked : v)));
-                    }}
-                  />
-                  #{i} {l.width}x{l.height} id {hex4(l.id)}
-                </label>
-              ))}
-            </span>
+        <Fields>
+          <Field label="表示">
+            <Segmented options={[["layer", "レイヤ"], ["metatiles", "メタタイル"], ["tiles", "GBA タイル"]] as const} value={view} onChange={setView} />
+          </Field>
+          {view === "tiles" && (
+            <Field label="行">
+              <NumberStepper value={tileRow} min={0} max={15} onChange={setTileRow} />
+            </Field>
           )}
-          {view === "tiles" && <NumberStepper label="palette" value={tileRow} min={0} max={15} onChange={setTileRow} />}
-          <label>
-            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-          </label>
-          <label>
-            <input type="checkbox" checked={grid} onChange={(e) => setGrid(e.currentTarget.checked)} /> grid
-          </label>
-          <label>
-            <input type="checkbox" checked={transparent0} onChange={(e) => setTransparent0(e.currentTarget.checked)} /> 色0 を透明にする
-          </label>
-        </div>
+          <Field label="拡大">
+            <Slider value={scale} min={1} max={8} onChange={setScale} format={(v) => `${v}x`} />
+          </Field>
+          <Field label="Overlay">
+            <Check checked={grid} onChange={setGrid}>{view === "tiles" ? "8x8" : "16x16"} Grid</Check>
+          </Field>
+          <Field label="色0">
+            <Check checked={transparent0} onChange={setTransparent0}>透明にする</Check>
+          </Field>
+        </Fields>
       </Card>
-      <Card title="カーソル">
-        <p class="mono hover-line">
-          <HoverInfo map={map} view={view} layers={[...drawOrder].reverse()} x={hover[0]} y={hover[1]} />
-        </p>
-      </Card>
-      <Card title="情報">
+      <CursorCard rows={hoverRows(map, view, [...drawOrder].reverse(), hover[0], hover[1])} minRows={view === "layer" ? 1 + map.layers.length * 2.5 : 3} />
+      <Card title="Metadata">
         <InfoTable
           rows={[
-            ["compression", map.compressed ? "LZ77" : "非圧縮"],
-            ["size", `${map.size} bytes`],
-            ["layers", map.layers.length],
-            ["tiles", `${map.tileCount} (${map.tiles ? "ファイル内" : "ファイル外"})`],
-            ["metatiles", map.metatileCount],
-            ["loadOffset", map.loadOffset],
-            [
-              "used by Map",
-              maps.length === 0 ? <span key="v" class="dim">{scripted ? "(スクリプトから見つかっていません)" : "(この ROM のスクリプトは読めないので探していません)"}</span> : (
-                <span key="v">
-                  {maps.map((root) => (
-                    <a key={root} href={mapHref(root)} class="load-link">
-                      {hex4(root)}
-                    </a>
-                  ))}
-                </span>
-              ),
-            ],
+            ["metatiles", `${map.metatileCount} 個`, "メタタイル = 16x16 px. GBA タイル 4 枚 (左上・右上・左下・右下)"],
+            ["tiles", `${map.tileCount} 枚, ${map.tiles ? "ファイル内" : "ファイル外 (タイルセットの部品)"}`, "GBA タイル (8x8 px)"],
+            ["loadOffset", `${map.loadOffset} タイル目 (VRAM の +${hex4(map.loadOffset * 32)} バイト)`, "ファイル内のタイルを置く VRAM の位置. キャラクタブロックの先頭から"],
+            ["compression", map.compressed ? "LZ77" : "なし"],
+            ["size", `${map.size} バイト`, "展開後のデータの終わりの位置 (表示用に計算した値. ファイルの大きさではない)"],
           ]}
         />
       </Card>
+      <UsedByCard refs={usedBy} tip="このタイルマップを読み込む場面を持つ Map (Cmd_LoadTileMap の '.d') と、Map_LoadMapScripted の '.n' でこのタイルマップを対にしている Collision Map" empty={scripted ? "スクリプトから定数で読み込んでいる所は見つかっていない" : "この ROM のスクリプトは読めないので探していない"} />
     </AssetView>
   );
 };
 
-// マウスの下にあるものの情報
-// layers は表示しているレイヤ番号 (手前から)
-const HoverInfo: FunctionComponent<{ map: Tilemap; view: string; layers: number[]; x: number; y: number }> = ({ map, view, layers, x, y }) => {
+// マウスの下にあるもの (カーソルの欄に出す行). layers は表示しているレイヤ番号 (手前から)
+const hoverRows = (map: Tilemap, view: string, layers: number[], x: number, y: number): InfoRow[] | null => {
   if (x < 0) return null;
-  const entries = (mt: number) => [0, 1, 2, 3].map((k) => hex4(map.metatiles[mt * 4 + k] ?? 0)).join(" ");
+  const entries = (mt: number) => <MetatileEntries entries={[0, 1, 2, 3].map((k) => map.metatiles[mt * 4 + k] ?? 0)} />;
   if (view === "layer") {
     const mx = x >> 4, my = y >> 4;
-    const parts = layers.flatMap((i) => {
+    const rows: InfoRow[] = [["位置", `metatile (${mx}, ${my})`, "メタタイル単位 (1 = 16 px)"]];
+    for (const i of layers) {
       const layer = map.layers[i];
-      if (mx >= layer.width || my >= layer.height) return [];
+      if (mx >= layer.width || my >= layer.height) continue;
       const mt = layer.mtmap[mtmapIndex(layer, mx, my)];
-      return [`#${i}: metatile ${mt} (${entries(mt)})`];
-    });
-    return parts.length > 0 ? <>({mx}, {my}) {parts.join(" / ")}</> : null;
+      rows.push([`レイヤ ${i}`, <Fragment key="v">metatile {mt}{entries(mt)}</Fragment>]);
+    }
+    return rows;
   }
   if (view === "metatiles") {
     const mt = (y >> 4) * 16 + (x >> 4);
-    return mt < map.metatileCount ? <>metatile {mt}: {entries(mt)}</> : null;
+    return mt < map.metatileCount ? [["metatile", <Fragment key="v">{mt}{entries(mt)}</Fragment>]] : null;
   }
   const k = (y >> 3) * 16 + (x >> 3);
-  return k < map.tileCount ? <>VRAM tile {map.loadOffset + k}</> : null;
+  return k < map.tileCount ? [["VRAM tile", `${map.loadOffset + k}`, "loadOffset + ファイル内の番号"], ["ファイル内", `${k} 枚目`]] : null;
 };
+
+// メタタイルの 4 エントリ (BgMapEntry) を左上・右上・左下・右下の 2x2 で出す. タイル番号, 反転, パレット行に分ける
+const MetatileEntries: FunctionComponent<{ entries: number[] }> = ({ entries }) => (
+  <div class="mt-entries">
+    {entries.map((e, k) => (
+      <span key={k} class="mt-entry" title={`${["左上", "右上", "左下", "右下"][k]}: ${hex4(e)} (bit0-9 タイル番号, bit10 左右反転, bit11 上下反転, bit12-15 パレット行)`}>
+        tile {e & 0x3FF}
+        <span class="mt-sub">
+          p{e >> 12}
+          {e & 0x400 ? " ↔" : ""}
+          {e & 0x800 ? " ↕" : ""}
+        </span>
+      </span>
+    ))}
+  </div>
+);

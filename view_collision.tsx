@@ -1,22 +1,20 @@
 // 当たり判定マップ (DIR_COLLISION_MAP) のタブ, 上から見たグリッドにタイルの値を色で描き、ゾーン・経路・ナビメッシュを重ねる
 
-import { FunctionComponent } from "preact";
+import type { FunctionComponent } from "preact";
 import { useLayoutEffect, useMemo, useRef, useState } from "preact/hooks";
 import { isSupported, type ROMFile } from "./rom.ts";
 import { type FileEntry } from "./fs.ts";
+import { drawLabel, HIGHLIGHT_COLOR, NAV_COLOR, navHighlight, pathColor, type WorldHighlight, ZONE_COLOR } from "./collision_overlay.tsx";
 import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap } from "./collision.ts";
-import { collisionLoads } from "./analysis.ts";
-import { scriptHref } from "./view_script.tsx";
-import { tilemapHref } from "./view_tilemap.tsx";
+import { collisionLoads, mapEntries } from "./analysis.ts";
+import type { LoadCall } from "./script_scan.ts";
+import { tilemapHref, tilemapName } from "./view_tilemap.tsx";
 import { COLLISION_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { AssetView, Card, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
+import { AssetView, Card, Check, CursorCard, Field, Fields, hashID, hex4, idLabel, type InfoRow, InfoTable, MapLink, NameRef, Segmented, Slider, UsedByCard, useHashID, type UseRef } from "./components.tsx";
 
-const collisionLabel = (id: number, withDesc = true) => {
-  const name = decomp(COLLISION_NAMES)[id];
-  if (!name) return hex4(id);
-  return withDesc && name[1] ? `${hex4(id)} ${name[0]} ${name[1]}` : `${hex4(id)} ${name[0]}`;
-};
+const collisionLabel = (id: number, withDesc = true) => idLabel(id, decomp(COLLISION_NAMES)[id], withDesc);
+export const collisionName = (id: number) => decomp(COLLISION_NAMES)[id]?.[0];
 
 export const collisionHref = (id: number) => `#collision/${hex4(id)}`;
 
@@ -118,8 +116,41 @@ const CollisionView: FunctionComponent<{
   const map = useMemo(() => parseCollisionMap(rom.data, entry, hasNavIslands(rom.id)), [rom, entry]);
   const scripted = isSupported(rom, "script");
   const calls = scripted ? collisionLoads(rom).get(map.id) ?? [] : [];
+  // Used by: この Collision Map を読み込む場面を持つ Map (Map タブと同じ mapEntries). 補足は同じ呼び出しの '.n' (対のタイルマップ)
+  // どの Map の場面にも入らない呼び出しは、呼び出しのあるスクリプトとして出す
+  const usedBy = useMemo((): UseRef[] => {
+    if (!scripted) return [];
+    const pairList = (cs: LoadCall[]) => {
+      const ns = [...new Set(cs.map((c) => c.args.n?.[0]).filter((n): n is number => n !== null && n !== undefined))];
+      return ns.length > 0
+        ? (
+          <>
+            対: {ns.map((n, i) => (
+              <span key={n}>
+                {i > 0 && ", "}
+                <NameRef id={n} name={tilemapName(n)} href={tilemapHref(n)} />
+              </span>
+            ))}
+          </>
+        )
+        : undefined;
+    };
+    const refs: UseRef[] = [];
+    const inMaps = new Set<number>();
+    for (const e of mapEntries(rom)) {
+      const cs = e.scenes.flatMap((sc) => sc.collisions.filter((c) => c.args.p?.[0] === map.id));
+      if (cs.length === 0) continue;
+      cs.forEach((c) => inMaps.add(c.address));
+      refs.push({ key: `m${e.root}`, kind: "Map", link: <MapLink root={e.root} stage={e.stage} />, detail: pairList(cs), title: [...new Set(cs.map((c) => `Script ${hex4(c.script)}`))].join(", ") });
+    }
+    for (const c of calls.filter((c) => !inMaps.has(c.address))) {
+      refs.push({ key: `s${c.address}`, kind: "Script", link: <a href={`#script/${hex4(c.script)}`}>Script {hex4(c.script)}</a>, detail: pairList([c]) });
+    }
+    return refs;
+  }, [rom, map]);
   const [hover, setHover] = useState<[number, number]>([-1, -1]);
-  const [highlight, setHighlight] = useState<number | null>(null); // 凡例で選んだ値 (attr / occluder)
+  const [highlight, setHighlight] = useState<number | null>(null);
+  const [world, setWorld] = useState<WorldHighlight>(null); // 一覧でマウスを乗せているゾーン・経路 // 凡例で選んだ値 (attr / occluder)
 
   // attr / occluder の凡例: 値 -> タイル数
   const legend = useMemo(() => {
@@ -133,99 +164,84 @@ const CollisionView: FunctionComponent<{
   }, [map, mode]);
 
   return (
-    <AssetView title={collisionLabel(map.id, false)} desc={decomp(COLLISION_NAMES)[map.id]?.[1]} stage={<CollisionCanvas map={map} mode={mode} overlays={overlays} cell={BASE_CELL * scale} highlight={highlight} onHover={(x, y) => setHover([x, y])} />}>
+    <AssetView title={collisionLabel(map.id, false)} desc={decomp(COLLISION_NAMES)[map.id]?.[1]} stage={<CollisionCanvas map={map} mode={mode} overlays={overlays} cell={BASE_CELL * scale} highlight={highlight} world={world} onHover={(x, y) => setHover([x, y])} />}>
       <Card title="表示">
-        <div class="controls">
-          {(["height", "stairs", "attr", "occluder"] as const).map((m) => (
-            <label key={m}>
-              <input
-                type="radio"
-                name="collision-mode"
-                checked={mode === m}
-                onChange={() => {
-                  setMode(m);
-                  setHighlight(null);
-                }}
-              />{" "}
-              {m === "height" ? "高さ" : m === "stairs" ? "階段" : m === "attr" ? "属性" : "occluder"}
-            </label>
-          ))}
-        </div>
-        <div class="controls">
-          {(["zones", "paths", "navMesh"] as const).map((o) => (
-            <label key={o}>
-              <input type="checkbox" checked={overlays[o]} onChange={(e) => setOverlays({ ...overlays, [o]: e.currentTarget.checked })} /> {o === "zones" ? "ゾーン" : o === "paths" ? "経路" : "ナビメッシュ"}
-            </label>
-          ))}
-          <NumberStepper label="scale" value={scale} min={1} max={8} onChange={setScale} />
-        </div>
-        {legend.length > 0 && (
+        <Fields>
+          <Field label="塗り分け">
+            <Segmented
+              options={[["height", "高さ"], ["stairs", "階段"], ["attr", "属性"], ["occluder", "occluder"]] as const}
+              value={mode}
+              onChange={(m) => {
+                setMode(m);
+                setHighlight(null);
+              }}
+            />
+          </Field>
+          <Field label="Overlay">
+            {(["zones", "paths", "navMesh"] as const).map((o) => (
+              <Check key={o} checked={overlays[o]} onChange={(on) => setOverlays({ ...overlays, [o]: on })}>
+                {o === "zones" ? "Zones" : o === "paths" ? "Paths" : "NavMesh"}
+              </Check>
+            ))}
+          </Field>
+          <Field label="拡大">
+            <Slider value={scale} min={1} max={8} onChange={setScale} format={(v) => `${v}x`} />
+          </Field>
+        </Fields>
+      </Card>
+      {legend.length > 0 && (
+        <Card title={`凡例 (${mode === "attr" ? "属性" : "occluder"})`} tip="押すとその値のタイルだけを強調する">
           <div class="legend">
             {legend.map(([v, n]) => (
               <span key={v} class={v === highlight ? "legend-item selected" : "legend-item"} onClick={() => setHighlight(v === highlight ? null : v)}>
                 <span class="swatch" style={{ background: tileColor({ ...map, tiles: [mode === "attr" ? { ...map.tiles[0], attr: v } : { ...map.tiles[0], occluder: v }] }, mode, 0) }} />
-                {mode === "attr" ? `${hex4(v)} ${attrNames(v)}` : v === 0xFF ? "0xFF なし" : v} ({n})
+                <span class="legend-name">{mode === "attr" ? `${hex4(v)} ${attrNames(v)}` : v === 0xFF ? "0xFF なし" : v}</span>
+                <span class="legend-count">{n}</span>
               </span>
             ))}
           </div>
-        )}
-      </Card>
-      <Card title="カーソル">
-        <p class="mono hover-line">
-          <HoverInfo map={map} x={hover[0]} y={hover[1]} />
-        </p>
-      </Card>
-      <Card title="情報">
+        </Card>
+      )}
+      <CursorCard rows={hoverRows(map, hover[0], hover[1])} minRows={6} />
+      <Card title="Metadata">
         <InfoTable
           rows={[
-            ["size", `${map.width}x${map.height} tiles`],
-            ["tilemapOffset", `(${map.tilemapOffsetX}, ${map.tilemapOffsetY})`],
-            ["unk_0", map.unk_0],
-            ["zones", map.zones.length],
-            ["paths", map.paths.length],
-            ["navMesh", map.navMesh ? (!hasNavIslands(rom.id) ? "島に分けない" : `${map.navMesh.length} islands`) : "なし"],
-            [
-              "loaded by",
-              calls.length > 0
-                ? (
-                  <span key="v">
-                    {calls.map((c, i) => (
-                      <span key={i}>
-                        {i > 0 && ", "}
-                        <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
-                        {c.args.n?.[0] !== null && c.args.n?.[0] !== undefined && (
-                          <>
-                            {" "}(<a href={tilemapHref(c.args.n[0])}>tilemap {hex4(c.args.n[0])}</a>)
-                          </>
-                        )}
-                      </span>
-                    ))}
-                  </span>
-                )
-                : <span key="v" class="dim">{scripted ? "スクリプトから定数で読み込んでいる箇所は見つかっていません" : "この ROM のスクリプトは読めないので探していません"}</span>,
-            ],
+            ["size", `${map.width} x ${map.height} タイル`, "width は x 方向, height は奥行き (z 方向) のタイル数. タイルの高さとは別"],
+            ["tilemapOffset", `(${map.tilemapOffsetX}, ${map.tilemapOffsetY}) → (${map.tilemapOffsetX >> 4}, ${map.tilemapOffsetY >> 4}) px`, ">> 4 したものが、対になるタイルマップに重ねるときのずれ (px)"],
+            ["unk_0", hex4(map.unk_0), "意味は分かっていない"],
           ]}
         />
       </Card>
-      <ZoneTable map={map} />
-      <PathTable map={map} />
+      <ZoneTable map={map} hover={world} onHover={setWorld} />
+      <PathTable map={map} hover={world} onHover={setWorld} />
+      <NavTable map={map} hover={world} onHover={setWorld} />
+      <UsedByCard
+        refs={usedBy}
+        tip="Map_LoadMapScripted (0x30AD) の '.p' でこの Collision Map を読み込む Map. 補足は同じ呼び出しの '.n' で、このツールは対になるタイルマップと見なしている (ゲームは読むが使わない). マウスを乗せると呼び出しのあるスクリプトが出る"
+        empty={scripted ? "スクリプトから定数で読み込んでいる所は見つかっていない" : "この ROM のスクリプトは読めないので探していない"}
+      />
     </AssetView>
   );
 };
 
 // タイル (x, y) の値の説明
-export const collisionTileText = (map: CollisionMap, x: number, y: number): string => {
+// タイル (x, y) の情報 (カーソルの欄に出す行). Map タブも使う
+export const collisionTileRows = (map: CollisionMap, x: number, y: number): InfoRow[] => {
   const t = map.tiles[y * map.width + x];
   const zones = map.zones.filter((z) => x * 256 + 128 >= z.x1 && x * 256 + 128 < z.x2 && y * 256 + 128 >= z.y1 && y * 256 + 128 < z.y2).map((z) => hex4(z.id));
-  return `(${x}, ${y}) 高さ ${t.height}, 階段 ${STAIRS_NAMES[t.stairs] ?? t.stairs}, occluder ${t.occluder === 0xFF ? "なし" : t.occluder}, attr ${hex4(t.attr)} ${attrNames(t.attr)}` + (zones.length > 0 ? `, zone ${zones.join(" ")}` : "");
+  return [
+    ["位置", `tile (${x}, ${y})`, "x と z (奥行き) のタイル座標"],
+    ["height", t.height],
+    ["stairs", STAIRS_NAMES[t.stairs] ?? t.stairs],
+    ["occluder", t.occluder === 0xFF ? "なし (0xFF)" : t.occluder],
+    ["attr", `${hex4(t.attr)} ${attrNames(t.attr)}`],
+    ["zones", zones.length > 0 ? zones.join(" ") : "なし"],
+  ];
 };
 
-const HoverInfo: FunctionComponent<{ map: CollisionMap; x: number; y: number }> = ({ map, x, y }) => {
-  if (x < 0 || x >= map.width || y < 0 || y >= map.height) return null;
-  return <span>{collisionTileText(map, x, y)}</span>;
-};
+const hoverRows = (map: CollisionMap, x: number, y: number) => (x < 0 || x >= map.width || y < 0 || y >= map.height ? null : collisionTileRows(map, x, y));
 
-const CollisionCanvas: FunctionComponent<{ map: CollisionMap; mode: Mode; overlays: Overlays; cell: number; highlight: number | null; onHover: (x: number, y: number) => void }> = ({ map, mode, overlays, cell, highlight, onHover }) => {
+const CollisionCanvas: FunctionComponent<{ map: CollisionMap; mode: Mode; overlays: Overlays; cell: number; highlight: number | null; world?: WorldHighlight; onHover: (x: number, y: number) => void }> = ({ map, mode, overlays, cell, highlight, world = null, onHover }) => {
   const ref = useRef<HTMLCanvasElement>(null);
   const width = map.width * cell, height = map.height * cell;
 
@@ -262,50 +278,97 @@ const CollisionCanvas: FunctionComponent<{ map: CollisionMap; mode: Mode; overla
 
     const px = (v: number) => (v / 256) * cell; // 1 タイル = 256
     const k = cell / BASE_CELL; // 線や点の太さの倍率
-    if (overlays.navMesh && map.navMesh) {
-      map.navMesh.forEach((island, i) => {
-        ctx.strokeStyle = hueColor(i + 3, 70);
-        ctx.lineWidth = k;
-        ctx.setLineDash([4 * k, 3 * k]);
-        for (const r of island.rects) ctx.strokeRect(r.minX * cell + 2 * k, r.minY * cell + 2 * k, (r.maxX - r.minX) * cell - 4 * k, (r.maxY - r.minY) * cell - 4 * k);
+    // NavMesh: 一覧で強調しているときは、強調する要素とそれにつながる要素を白で描き、ほかは薄くする
+    const nav = navHighlight(map, world);
+    if ((overlays.navMesh || nav) && map.navMesh) {
+      map.navMesh.forEach((island, ii) => {
+        island.rects.forEach((r, ri) => {
+          const on = nav?.island === ii && nav.rects.has(ri);
+          if (!overlays.navMesh && !on) return;
+          const [x, y, w, h] = [r.minX * cell + 2 * k, r.minY * cell + 2 * k, (r.maxX - r.minX) * cell - 4 * k, (r.maxY - r.minY) * cell - 4 * k];
+          if (on && nav.main === "rect") {
+            ctx.globalAlpha = 0.3;
+            ctx.fillStyle = NAV_COLOR;
+            ctx.fillRect(x, y, w, h);
+          }
+          ctx.globalAlpha = nav && !on ? 0.3 : 1;
+          ctx.strokeStyle = on ? HIGHLIGHT_COLOR : NAV_COLOR;
+          ctx.lineWidth = on && nav.main === "rect" ? 2.5 : 1;
+          ctx.setLineDash(on && nav.main === "rect" ? [] : [3 * k, 3 * k]);
+          ctx.strokeRect(x, y, w, h);
+        });
         ctx.setLineDash([]);
-        ctx.fillStyle = hueColor(i + 3, 70);
-        for (const p of island.portals) ctx.fillRect(px(p.x) - 3 * k, px(p.y) - 3 * k, 6 * k, 6 * k);
+        island.portals.forEach((p, pi) => {
+          const on = nav?.island === ii && nav.portals.has(pi);
+          if (!overlays.navMesh && !on) return;
+          ctx.globalAlpha = nav && !on ? 0.3 : 1;
+          ctx.fillStyle = on ? HIGHLIGHT_COLOR : NAV_COLOR;
+          const r = (on ? 3.5 : 2) * k;
+          ctx.fillRect(px(p.x) - r, px(p.y) - r, r * 2, r * 2);
+          if (on && nav.main === "portal") {
+            ctx.strokeStyle = HIGHLIGHT_COLOR;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px(p.x), px(p.y), 9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+        });
       });
+      ctx.globalAlpha = 1;
     }
-    if (overlays.zones) {
-      ctx.strokeStyle = "#ffd400";
-      ctx.fillStyle = "#ffd400";
-      ctx.lineWidth = 2 * k;
-      ctx.textAlign = "left";
-      ctx.textBaseline = "top";
-      for (const z of map.zones) {
+    // 一覧でマウスを乗せている要素は、重ねる設定がオフでも描き、太い線と濃い塗りで強調する (同じ種類のほかの要素は薄くする)
+    const hlZone = world?.kind === "zone" ? world.index : -1;
+    if (overlays.zones || hlZone >= 0) {
+      map.zones.forEach((z, i) => {
+        if (!overlays.zones && i !== hlZone) return;
+        const hl = i === hlZone, dim = hlZone >= 0 && !hl;
+        if (hl) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = ZONE_COLOR;
+          ctx.fillRect(px(z.x1), px(z.y1), px(z.x2 - z.x1), px(z.y2 - z.y1));
+        }
+        ctx.globalAlpha = dim ? 0.35 : 1;
+        ctx.strokeStyle = hl ? HIGHLIGHT_COLOR : ZONE_COLOR;
+        ctx.lineWidth = hl ? 3 : 1.5;
         ctx.strokeRect(px(z.x1), px(z.y1), px(z.x2 - z.x1), px(z.y2 - z.y1));
-        ctx.fillText(hex4(z.id), px(z.x1) + 2 * k, px(z.y1) + 2 * k);
-      }
+        ctx.globalAlpha = 1;
+      });
+      map.zones.forEach((z, i) => {
+        if ((!overlays.zones && i !== hlZone) || (hlZone >= 0 && i !== hlZone)) return;
+        drawLabel(ctx, hex4(z.id), px(z.x1) + 24, px(z.y1) + 10, i === hlZone ? HIGHLIGHT_COLOR : ZONE_COLOR);
+      });
       ctx.lineWidth = 1;
     }
-    if (overlays.paths) {
+    const hlPath = world?.kind === "path" ? world.index : -1;
+    if (overlays.paths || hlPath >= 0) {
       map.paths.forEach((path, i) => {
-        const color = hueColor(i, 65);
+        if (!overlays.paths && i !== hlPath) return;
+        const hl = i === hlPath, dim = hlPath >= 0 && !hl;
+        const color = hl ? HIGHLIGHT_COLOR : pathColor(i);
         ctx.strokeStyle = color;
         ctx.fillStyle = color;
-        ctx.lineWidth = 2 * k;
+        ctx.lineWidth = hl ? 3 : 1.5;
+        ctx.globalAlpha = dim ? 0.3 : 1;
         ctx.beginPath();
         path.nodes.forEach((n, j) => (j === 0 ? ctx.moveTo(px(n.x), px(n.y)) : ctx.lineTo(px(n.x), px(n.y))));
         ctx.stroke();
-        ctx.textAlign = "left";
-        ctx.textBaseline = "bottom";
         path.nodes.forEach((n, j) => {
           ctx.beginPath();
-          ctx.arc(px(n.x), px(n.y), 3 * k, 0, Math.PI * 2);
+          ctx.arc(px(n.x), px(n.y), hl ? 4 : 2.5, 0, Math.PI * 2);
           ctx.fill();
-          ctx.fillText(`${i}.${j}`, px(n.x) + 4 * k, px(n.y) - 2 * k);
+          if (hl && world?.kind === "path" && world.node === j) {
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(px(n.x), px(n.y), 9, 0, Math.PI * 2);
+            ctx.stroke();
+          }
         });
+        ctx.globalAlpha = 1;
+        if (path.nodes[0] && !dim) drawLabel(ctx, `Path ${i}`, px(path.nodes[0].x), px(path.nodes[0].y) - 12, color);
         ctx.lineWidth = 1;
       });
     }
-  }, [map, mode, overlays, cell, highlight, width, height]);
+  }, [map, mode, overlays, cell, highlight, width, height, JSON.stringify(world)]);
 
   const hover = (e: MouseEvent) => {
     const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
@@ -315,29 +378,29 @@ const CollisionCanvas: FunctionComponent<{ map: CollisionMap; mode: Mode; overla
   return <canvas ref={ref} class="collision-canvas" width={width} height={height} onMouseMove={hover} onMouseLeave={() => onHover(-1, -1)} />;
 };
 
-const ZoneTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
+// 座標は 1 タイル = 256 なので、タイル単位に直して出す. 高さは 1 段 = 16
+const tiles = (v: number) => (v % 256 === 0 ? `${v / 256}` : (v / 256).toFixed(2));
+
+// ゾーンと経路の一覧 (Collision タブと Map タブ). 行にマウスを乗せると onHover で知らせ、絵の上で強調してもらう
+export const ZoneTable: FunctionComponent<{ map: CollisionMap; hover: WorldHighlight; onHover: (h: WorldHighlight) => void }> = ({ map, hover, onHover }) =>
   map.zones.length === 0 ? null : (
-    <Card title={`ゾーン (${map.zones.length})`}>
-      <table class="pltt-table striped">
+    <Card title={`Zones (${map.zones.length})`} tip="スクリプトが id で指す範囲. x と z はタイル単位, 高さは段 (z1 / 16)">
+      <table class="pltt-table striped sub-table hover-rows" onMouseLeave={() => onHover(null)}>
         <thead>
           <tr>
-            <th>#</th>
             <th>id</th>
-            <th>x1, y1 - x2, y2 (タイル)</th>
-            <th>z1 - z2</th>
+            <th>x (タイル)</th>
+            <th>z (タイル)</th>
+            <th title="z1 / 16. z2 は範囲の判定に使われない">高さ (段)</th>
           </tr>
         </thead>
         <tbody>
           {map.zones.map((z, i) => (
-            <tr key={i}>
-              <td>{i}</td>
+            <tr key={i} class={hover?.kind === "zone" && hover.index === i ? "hl" : undefined} onMouseEnter={() => onHover({ kind: "zone", index: i })}>
               <td>{hex4(z.id)}</td>
-              <td>
-                {z.x1 / 256}, {z.y1 / 256} - {z.x2 / 256}, {z.y2 / 256}
-              </td>
-              <td>
-                {z.z1} - {z.z2}
-              </td>
+              <td>{tiles(z.x1)} – {tiles(z.x2)}</td>
+              <td>{tiles(z.y1)} – {tiles(z.y2)}</td>
+              <td title={`z1 = ${z.z1}, z2 = ${z.z2}`}>{z.z1 / 16}</td>
             </tr>
           ))}
         </tbody>
@@ -345,30 +408,35 @@ const ZoneTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
     </Card>
   );
 
-const PathTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
+// PathNode.command の上位 4 ビット (decomp のコメントで分かっているもの)
+const PATH_COMMANDS: Record<number, string> = { 0x00: "移動", 0x10: "方向転換" };
+
+export const PathTable: FunctionComponent<{ map: CollisionMap; hover: WorldHighlight; onHover: (h: WorldHighlight) => void }> = ({ map, hover, onHover }) =>
   map.paths.length === 0 ? null : (
-    <Card title={`経路 (${map.paths.length})`}>
-      <table class="pltt-table striped">
+    <Card title={`Paths (${map.paths.length})`} tip="敵などが順にたどる点の列. 位置はタイル単位. 待ちは delay の下位 12 ビット (フレーム数), 動きは command の上位 4 ビット">
+      <table class="pltt-table striped sub-table hover-rows" onMouseLeave={() => onHover(null)}>
         <thead>
           <tr>
-            <th>path.node</th>
-            <th>x, y (タイル)</th>
-            <th>delay</th>
-            <th>command</th>
+            <th>Path</th>
+            <th>Node</th>
+            <th>x, z (タイル)</th>
+            <th title="delay の下位 12 ビット. 上位 4 ビットは意味が分かっていない">待ち</th>
+            <th title="command の上位 4 ビット">動き</th>
           </tr>
         </thead>
         <tbody>
           {map.paths.flatMap((p, i) =>
             p.nodes.map((n, k) => (
-              <tr key={`${i}.${k}`}>
+              <tr key={`${i}.${k}`} class={hover?.kind === "path" && hover.index === i ? (hover.node === k ? "hl strong" : "hl") : undefined} onMouseEnter={() => onHover({ kind: "path", index: i, node: k })}>
+                <td>{k === 0 ? i : ""}</td>
+                <td>{k}</td>
                 <td>
-                  {i}.{k}
+                  {tiles(n.x)}, {tiles(n.y)}
                 </td>
-                <td>
-                  {n.x / 256}, {n.y / 256}
+                <td title={`delay = ${hex4(n.delay)}`}>
+                  {n.delay & 0xFFF}f{n.delay >> 12 ? ` (+${(n.delay >> 12).toString(16).toUpperCase()})` : ""}
                 </td>
-                <td>{hex4(n.delay)}</td>
-                <td>0x{n.command.toString(16).toUpperCase().padStart(2, "0")}</td>
+                <td title={`command = 0x${n.command.toString(16).toUpperCase().padStart(2, "0")}`}>{PATH_COMMANDS[n.command & 0xF0] ?? `0x${(n.command & 0xF0).toString(16).toUpperCase().padStart(2, "0")}`}</td>
               </tr>
             ))
           )}
@@ -376,3 +444,49 @@ const PathTable: FunctionComponent<{ map: CollisionMap }> = ({ map }) =>
       </table>
     </Card>
   );
+
+// NavMesh の一覧: 歩ける矩形 (Rect) と出入口 (Portal). 行にマウスを乗せると、その要素とつながる要素を絵の上で強調する
+export const NavTable: FunctionComponent<{ map: CollisionMap; hover: WorldHighlight; onHover: (h: WorldHighlight) => void }> = ({ map, hover, onHover }) => {
+  const islands = map.navMesh ?? [];
+  const rects = islands.reduce((n, is) => n + is.rects.length, 0), portals = islands.reduce((n, is) => n + is.portals.length, 0);
+  if (rects + portals === 0) return null;
+  const multi = islands.length > 1;
+  const isHL = (kind: "rect" | "portal", island: number, index: number) => hover?.kind === kind && hover.island === island && hover.index === index;
+  return (
+    <Card title={`NavMesh (${rects} Rects, ${portals} Portals)`} tip="敵の移動に使う、歩ける矩形 (Rect, タイル単位) と、矩形どうしの出入口 (Portal). つながりは Rect なら接する Portal, Portal ならつなぐ Rect. 番号は島の中での番号">
+      <table class="pltt-table striped sub-table hover-rows" onMouseLeave={() => onHover(null)}>
+        <thead>
+          <tr>
+            {multi && <th>Island</th>}
+            <th>種類</th>
+            <th>x (タイル)</th>
+            <th>z (タイル)</th>
+            <th>つながり</th>
+          </tr>
+        </thead>
+        <tbody>
+          {islands.flatMap((is, ii) => [
+            ...is.rects.map((r, ri) => (
+              <tr key={`r${ii}.${ri}`} class={isHL("rect", ii, ri) ? "hl" : undefined} onMouseEnter={() => onHover({ kind: "rect", island: ii, index: ri })}>
+                {multi && <td>{ri === 0 ? ii : ""}</td>}
+                <td>Rect {ri}</td>
+                <td>{r.minX} – {r.maxX - 1}</td>
+                <td>{r.minY} – {r.maxY - 1}</td>
+                <td class="links">{r.portals.length > 0 ? `Portal ${r.portals.join(", ")}` : "-"}</td>
+              </tr>
+            )),
+            ...is.portals.map((p, pi) => (
+              <tr key={`p${ii}.${pi}`} class={isHL("portal", ii, pi) ? "hl" : undefined} onMouseEnter={() => onHover({ kind: "portal", island: ii, index: pi })} title={`unk_4 = ${hex4(p.unk_4)}`}>
+                {multi && <td></td>}
+                <td>Portal {pi}</td>
+                <td>{tiles(p.x)}</td>
+                <td>{tiles(p.y)}</td>
+                <td class="links">{p.rects.length > 0 ? `Rect ${p.rects.join(", ")}` : "-"}</td>
+              </tr>
+            )),
+          ])}
+        </tbody>
+      </table>
+    </Card>
+  );
+};

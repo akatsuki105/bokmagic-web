@@ -5,11 +5,11 @@ import { FunctionComponent } from "preact";
 import { useMemo, useState } from "preact/hooks";
 import type { ROMFile } from "./rom.ts";
 import { decodeScript, type ScriptEntry } from "./script.ts";
-import { scriptCallers, scriptDirectory } from "./analysis.ts";
+import { mapEntries, scriptCallers, scriptDirectory } from "./analysis.ts";
 import { type PrintContext, scriptName } from "./bokcc/instruction.ts";
 import { SCRIPT_NAMES, STRING_NAMES } from "./generated/names.ts";
 import { decomp, hasDecompTables } from "./decomp.ts";
-import { AssetView, Card, hashID, hex4, InfoTable, useHashID } from "./components.tsx";
+import { AssetView, Card, hashID, hex4, InfoTable, MapLink, UsedByCard, useHashID } from "./components.tsx";
 
 // 名前表は U32J (rev1, rev0) のときだけ使う (decomp.ts), ROM を読み込むたびに作り直す
 const printContext = (): PrintContext => ({
@@ -70,6 +70,7 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
     }
   }, [rom, script]);
   const desc = decomp(SCRIPT_NAMES)[script.id]?.[1];
+  const mapRoot = useMemo(() => mapEntries(rom).find((e) => e.root === script.id), [rom, script]);
 
   return (
     <AssetView
@@ -82,17 +83,24 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
         </pre>
       }
     >
-      <Card title="情報">
+      <Card title="Metadata">
         <InfoTable
           rows={[
-            ["ID", hex4(script.id)],
-            ["ROM", `0x${(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}`],
-            ["variables", script.varCount],
-            ["called by", callers.length > 0 ? <ScriptLinks key="v" ids={callers} /> : <span key="v" class="dim">(定数で呼んでいるスクリプトは無し)</span>],
+            ["id", hex4(script.id)],
+            ["address", `0x${(script.offset + 0x08000000).toString(16).toUpperCase().padStart(8, "0")}`, "バイトコードの ROM 上の位置"],
+            ["varCount", script.varCount, "ローカル変数の数"],
           ]}
         />
         {aliases.length > 0 && <Aliases ids={aliases.map((s) => s.id)} />}
       </Card>
+      <UsedByCard
+        refs={[
+          ...(mapRoot ? [{ key: "map", kind: "Map", link: <MapLink root={mapRoot.root} stage={mapRoot.stage} />, detail: "このスクリプトが起点" }] : []),
+          ...callers.map((id) => ({ key: `s${id}`, kind: "Script", link: <a href={scriptHref(id)}>{scriptName(id, names().ctx)}</a>, detail: "定数の ID で呼んでいる" })),
+        ]}
+        tip="このスクリプトを起点にする Map と、このスクリプトを定数の ID で呼んでいるスクリプト"
+        empty="定数の ID で呼んでいる所は見つかっていない"
+      />
     </AssetView>
   );
 };

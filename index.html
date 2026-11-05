@@ -206,14 +206,12 @@
       }
       .stepper {
         display: inline-flex;
-        gap: 4px;
+        gap: 6px;
         align-items: center;
       }
-      .anim-refs {
-        font-family: var(--font-mono);
-        font-size: 14px;
-        margin: 0.25em 0;
-        opacity: 0.8;
+      .stepper input[type="number"],
+      .field-value input[type="number"] {
+        width: 4.5em;
       }
       .sprite-list {
         list-style: none;
@@ -316,6 +314,8 @@
       .swatch {
         width: 14px;
         height: 14px;
+        border-radius: 2px;
+        box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.25); /* 地の色に近い色でも見本の形が分かるように */
       }
       .pltt-list li {
         display: flex;
@@ -351,25 +351,221 @@
         padding: 10px 14px 12px;
         margin-bottom: 12px;
       }
+      /* カードの見出しは本文の色の小さめの太字 (中の項目名は控えめな色なので、見出しの方が強く見える) */
       .card > h3 {
-        margin: 0 0 8px;
-        font-size: 14px;
+        margin: 0 0 10px;
+        font-size: 13px;
+        letter-spacing: 0.04em;
+        color: var(--text);
+        cursor: pointer; /* 押すと折り畳む */
+        user-select: none;
+      }
+      .card-chevron {
+        display: inline-block;
+        width: 1.1em;
         color: var(--text-dim);
       }
-      .card .controls + .controls,
-      .card .controls + .bgpltt-grid,
-      .card .controls + p {
-        margin-top: 8px;
+      .card.collapsed > :not(h3) {
+        display: none;
       }
-      .card .info-table {
-        margin-top: 0;
-      }
-      .card p:first-of-type {
-        margin-top: 0;
-      }
-      .card p:last-child,
-      .card table:last-child {
+      .card.collapsed > h3 {
         margin-bottom: 0;
+      }
+      /* カードの中の設定の行: 左にラベル、右に部品 (components.tsx の Fields, Field) */
+      .fields {
+        display: grid;
+        grid-template-columns: max-content minmax(0, 1fr);
+        gap: 8px 14px;
+        align-items: center;
+      }
+      .field-label {
+        color: var(--text-dim);
+        font-size: 14px;
+        white-space: nowrap;
+      }
+      .field-value {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px 14px;
+        align-items: center;
+        min-width: 0;
+      }
+      .field-value select.wide {
+        width: 100%;
+      }
+      .field-value select {
+        max-width: 100%;
+      }
+
+      /* つながったボタン (◀ ▶, どれか 1 つを選ぶ切り替え) */
+      .button-group {
+        display: inline-flex;
+      }
+      .button-group > button {
+        border-radius: 0;
+      }
+      .button-group > button + button {
+        margin-left: -1px;
+      }
+      .button-group > button:first-child {
+        border-radius: 4px 0 0 4px;
+      }
+      .button-group > button:last-child {
+        border-radius: 0 4px 4px 0;
+      }
+      .button-group > button.selected {
+        position: relative; /* 隣のボタンの枠より前に出して、選んでいるものの枠を見せる */
+      }
+      /* 表示するものを選ぶ一覧 (components.tsx の ToggleList): 1 行に 1 つ, 縞にする */
+      .toggle-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .toggle-item {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        padding: 4px 8px;
+        border-radius: 4px;
+        background: var(--stripe-odd);
+        cursor: pointer;
+      }
+      .toggle-item:nth-child(even) {
+        background: var(--stripe);
+      }
+      .toggle-item:hover {
+        background: var(--bg-button);
+      }
+      .toggle-label {
+        min-width: 3em;
+        flex-shrink: 0;
+      }
+      .toggle-item .badge {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+      .toggle-detail {
+        color: var(--text-dim);
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+      /* スライダー: つまみの列は残りの幅いっぱい, 値は等幅で右に */
+      .slider {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex: 1;
+        min-width: 14em;
+      }
+      .slider input[type="range"] {
+        flex: 1;
+        min-width: 6em;
+        margin: 0;
+      }
+      .slider-value {
+        font-family: var(--font-mono);
+        font-size: 14px;
+        min-width: 4.5em;
+        text-align: right;
+        white-space: nowrap;
+      }
+      .check {
+        display: inline-flex;
+        gap: 6px;
+        align-items: center;
+      }
+      .button-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+      }
+      /* カードの中の補足 (ソースでの使われ方, 注意書き など) */
+      .note {
+        color: var(--text-dim);
+        font-size: 14px;
+        margin: 0;
+      }
+      /* カードの中の要素どうしの間隔はここでそろえる (見出しの下, 行の並び, ボタンの行, 表, 補足) */
+      .card > * {
+        margin-top: 0;
+        margin-bottom: 0;
+      }
+      .card > * + * {
+        margin-top: 12px;
+      }
+      /* アニメのコマンド列 (components.tsx の AnimTimeline). 幅はフレーム数に比例 */
+      .anim-timeline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+      .anim-step {
+        flex-basis: 0;
+        min-width: 3.2em;
+        display: flex;
+        flex-direction: column;
+        padding: 3px 5px;
+        border-radius: 3px;
+        background: var(--bg-button);
+        cursor: default;
+        overflow: hidden;
+        white-space: nowrap;
+      }
+      .anim-step[title] {
+        cursor: pointer;
+      }
+      .anim-step.current {
+        background: var(--bg-selected);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .anim-step-dur {
+        color: var(--text-dim);
+        font-size: 11px;
+      }
+      /* Map の読み込み: 呼び出し 1 つを 1 項目にし、縞にする. 1 行目に種類と読み込むもの、2 行目にスクリプトと引数 */
+      .load-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .load-item {
+        padding: 6px 8px;
+        border-radius: 4px;
+        background: var(--stripe-odd);
+      }
+      .load-item:nth-child(even) {
+        background: var(--stripe);
+      }
+      .load-head {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px 10px;
+        align-items: baseline;
+      }
+      .load-kind {
+        font-weight: bold;
+        min-width: 5em;
+      }
+      .load-args {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 2px 14px;
+        margin-top: 2px;
+        font-family: var(--font-mono);
+        font-size: 13px;
+      }
+      .arg-key {
+        color: var(--text-dim);
+      }
+      .badge {
+        font-size: 12px;
+        padding: 0 6px;
+        border-radius: 3px;
+        background: var(--bg-button);
+        color: var(--text-dim);
       }
       /* 未対応のタブの案内 */
       .unsupported {
@@ -424,6 +620,12 @@
         overflow: auto;
         padding-bottom: 24px;
       }
+      /* 本体の絵は細い枠で範囲を見せる (市松模様が地の色に溶けないように) */
+      .split-canvas > .canvas-wrap,
+      .split-canvas > .overlay-host {
+        box-shadow: 0 0 0 1px var(--border);
+        margin-top: 2px;
+      }
       .split-side {
         width: clamp(300px, 32vw, 560px); /* 表が折り返しにくいよう、広い画面では少し広げる */
         flex-shrink: 0;
@@ -449,17 +651,76 @@
           padding-bottom: 0;
         }
       }
+      /* BG Palette の 16 本: 1 本 1 行で縞にし、押して選ぶ. 選んでいる行は青で強調 */
       .bgpltt-grid {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
         width: fit-content;
-        margin: 0.5em 0;
       }
       .bgpltt-grid .pltt-row {
-        cursor: pointer;
+        gap: 3px;
+        padding: 4px 10px 4px 6px;
+        border-radius: 4px;
         border-left: 3px solid transparent;
+        background: var(--stripe-odd);
+        cursor: pointer;
+      }
+      .bgpltt-grid .pltt-row:nth-child(even) {
+        background: var(--stripe);
+      }
+      .bgpltt-grid .pltt-row:hover {
+        background: var(--bg-button);
       }
       .bgpltt-grid .pltt-row.selected {
         background: var(--bg-selected);
         border-left-color: var(--accent);
+      }
+      .bgpltt-grid .pltt-row > span:first-child {
+        width: 2.2em;
+        color: var(--text-dim);
+      }
+      .bgpltt-grid .pltt-row.selected > span:first-child {
+        color: var(--text);
+      }
+      .bgpltt-grid .swatch {
+        width: 22px;
+        height: 22px;
+      }
+      .bgpltt-grid .row-use {
+        margin-left: 10px;
+        color: var(--text-dim);
+        font-family: var(--font-sans);
+        font-size: 12px;
+        min-width: 12em;
+        white-space: nowrap;
+      }
+      /* 色の表 (ColorTable): 色の見本を大きく */
+      .color-table .swatch.large {
+        width: 44px;
+        height: 22px;
+      }
+      .color-table + .note {
+        margin-top: 6px;
+      }
+      .color-table th {
+        color: var(--text-dim);
+        font-weight: normal;
+      }
+      .color-table td:first-child {
+        color: var(--text-dim);
+      }
+      /* スプライトの下のパレット (使っている plttID の 16 色) */
+      .pltts {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        margin-top: 8px;
+        font-size: 14px;
+      }
+      .pltts .pltt-row > span:first-child {
+        width: 2.5em;
+        color: var(--text-dim);
       }
       .bokc {
         font-family: var(--font-mono);
@@ -517,19 +778,134 @@
         flex: 1;
         max-width: 480px;
       }
-      /* マウスの下の情報を出す1行, 何も無いときも高さを保つ */
+      /* マウスの下の情報を出す1行, 何も無いときも高さを保つ. 空のときは案内を出す */
       .hover-line {
         min-height: 1.5em;
       }
+      /* 詳細の表 (components.tsx の InfoTable): 項目名 | 値 の 2 列. 行は縞にし、長い値は値の列の中で折り返す */
       .info-table {
-        margin-top: 1em;
+        width: 100%;
+        border-collapse: collapse;
+        font-family: var(--font-mono);
+        font-size: 14px;
+        line-height: 1.45;
+      }
+      .info-table tr:nth-child(odd) {
+        background: var(--stripe-odd);
+      }
+      .info-table tr:nth-child(even) {
+        background: var(--stripe);
+      }
+      .info-table th,
+      .info-table td {
+        padding: 4px 8px;
+        text-align: left;
+        vertical-align: top;
       }
       .info-table th {
+        width: 1%; /* 項目名の列は中身の幅だけ取る */
         color: var(--text-dim);
         font-weight: normal;
-        padding-right: 1.2em;
         white-space: nowrap;
-        vertical-align: top;
+      }
+      .info-table td {
+        overflow-wrap: anywhere;
+      }
+      .sub-table th {
+        color: var(--text-dim);
+        font-weight: normal;
+        font-size: 13px;
+      }
+      .sub-table {
+        font-size: 14px;
+      }
+      .sub-table td.links {
+        white-space: normal; /* つながりの番号の列は長くなるので折り返す */
+      }
+      /* 参照の一覧 (使っているもの, 使う Map など): 1 行に 1 つ, 種類 | リンク */
+      .ref-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .ref-item {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        background: var(--stripe-odd);
+        font-size: 14px;
+      }
+      .ref-item:nth-child(even) {
+        background: var(--stripe);
+      }
+      .ref-kind {
+        color: var(--text-dim);
+        min-width: 6.5em;
+        font-size: 13px;
+      }
+      .ref-link {
+        font-family: var(--font-mono);
+      }
+      .ref-detail {
+        color: var(--text-dim);
+        font-size: 13px;
+      }
+      /* メタタイルの 4 エントリ (2x2) */
+      .mt-entries {
+        display: grid;
+        grid-template-columns: repeat(2, max-content);
+        gap: 2px;
+        margin-top: 4px;
+      }
+      .mt-entry {
+        display: flex;
+        gap: 6px;
+        padding: 1px 6px;
+        border-radius: 3px;
+        background: var(--bg-button);
+        font-size: 13px;
+      }
+      .mt-sub {
+        color: var(--text-dim);
+      }
+      /* マウスを乗せると絵の上で強調する一覧の行 (ゾーン, 経路) */
+      .hover-rows tbody tr {
+        cursor: default;
+      }
+      .hover-rows tbody tr.hl {
+        background: var(--bg-selected);
+      }
+      .hover-rows tbody tr.hl.strong {
+        box-shadow: inset 3px 0 0 var(--accent);
+      }
+      /* 補足のツールチップ: カードの見出しの横の ?, 説明がある項目名の点線 */
+      .tip {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        margin-left: 6px;
+        border-radius: 50%;
+        border: 1px solid var(--border);
+        color: var(--text-dim);
+        font-size: 11px;
+        line-height: 13px;
+        text-align: center;
+        font-weight: normal;
+        letter-spacing: 0;
+        cursor: help;
+        vertical-align: 1px;
+      }
+      .has-tip {
+        text-decoration: underline dotted;
+        text-underline-offset: 3px;
+        cursor: help;
+      }
+      .link-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
       }
       .hover-info {
         min-height: 3em;
@@ -555,21 +931,34 @@
         display: block;
         margin: 0.5em 0;
       }
+      /* Collision の凡例: 値ごとに 1 行 (色, 値, タイル数). 押した値を強調する */
       .legend {
         display: flex;
-        flex-wrap: wrap;
-        gap: 4px 12px;
+        flex-direction: column;
+        gap: 2px;
         font-family: var(--font-mono);
         font-size: 14px;
       }
       .legend-item {
-        display: inline-flex;
+        display: flex;
         align-items: center;
-        gap: 4px;
+        gap: 8px;
+        padding: 3px 6px;
+        border-radius: 3px;
         cursor: pointer;
       }
+      .legend-item:hover {
+        background: var(--bg-button);
+      }
       .legend-item.selected {
-        outline: 2px solid var(--accent);
+        background: var(--bg-selected);
+        box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .legend-name {
+        flex: 1;
+      }
+      .legend-count {
+        color: var(--text-dim);
       }
       .mono {
         font-family: var(--font-mono);
@@ -577,49 +966,33 @@
       .pltt-users {
         font-family: var(--font-mono);
       }
+      /* ポーズ一覧: 1 つずつ小さなカードにし、押して選ぶ */
       .thumbs {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
-        margin-top: 1em;
+        gap: 6px;
       }
       .thumb {
         display: flex;
         flex-direction: column;
         align-items: center;
-        padding: 2px;
+        gap: 2px;
+        padding: 4px;
         border: 1px solid transparent;
+        border-radius: 4px;
+        background: var(--bg-card);
         cursor: pointer;
+        font-family: var(--font-mono);
         font-size: 12px;
+        color: var(--text-dim);
+      }
+      .thumb:hover {
+        border-color: var(--border);
       }
       .thumb.selected {
         border-color: var(--accent);
-      }
-      .anim-panel {
-        margin: 0;
-      }
-      .anim-panel .controls + .controls {
-        margin-top: 0.5em;
-      }
-      .anim-status {
-        font-family: var(--font-mono);
-        margin: 0.5em 0;
-      }
-      .anim-cmds {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 4px;
-        font-family: var(--font-mono);
-        font-size: 14px;
-      }
-      .anim-cmd {
-        padding: 1px 6px;
-        border: 1px solid var(--border);
-        border-radius: 3px;
-        cursor: pointer;
-      }
-      .anim-cmd.current {
         background: var(--bg-selected);
+        color: var(--text);
       }
       .thumb .canvas-wrap {
         margin: 0;

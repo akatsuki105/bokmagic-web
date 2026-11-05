@@ -6,11 +6,11 @@ import type { ObjPltt } from "./objpltt.ts";
 import type { ROMFile } from "./rom.ts";
 import { auxPoseToObjs, type AuxSpriteGfx, parseAuxSprites } from "./sprite_aux.ts";
 import { ANIM_PLAY_REVERSE, ANIM_PLAY_XFLIP, ANIM_PLAY_YFLIP, type AuxAnimFile, AuxAnimState, cmdDuration, cmdFlip, cmdPose, parseAuxAnimFiles } from "./anim_aux.ts";
-import { renderObjs } from "./render.ts";
+import { OBJ_SIZE, renderObjs } from "./render.ts";
 import { AUX_ANIM_REFS } from "./generated/aux_anims.ts";
 import { ANIM_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { AssetView, Card, flagNames, hashID, hex4, InfoTable, NumberStepper, PaletteRow, PlttControl, PoseGrid, SpriteCanvas, spriteDesc, spriteLabel, StageTitle, useFrameLoop, useHashID } from "./components.tsx";
+import { AnimTimeline, AssetView, ButtonRow, Card, Check, Field, Fields, flagNames, hashID, hex4, InfoTable, PaletteRow, PlttControl, PoseGrid, Segmented, Slider, SpriteCanvas, spriteDesc, spriteLabel, StageTitle, useFrameLoop, useHashID } from "./components.tsx";
 
 export const auxSpriteHref = (id: number) => `#aux/${hex4(id)}`;
 
@@ -66,58 +66,77 @@ const AuxSpriteView: FunctionComponent<{ gfx: AuxSpriteGfx; pltt: ObjPltt; animF
           <div class="pltts">
             <PaletteRow pltt={pltt} plttID={plttID} />
           </div>
-          <StageTitle>ポーズ ({gfx.poseCount})</StageTitle>
+          <StageTitle tip={`次のエントリの先頭までの数 (ROM には無い推定値). ゲームはその後ろの ${gfx.poses.length - gfx.poseCount} 個も添字で引ける`}>ポーズ ({gfx.poseCount})</StageTitle>
           <PoseGrid count={gfx.poseCount} selected={poseIdx} onSelect={setPose} render={renderThumb} />
         </>
       }
     >
       <Card title="表示">
-        <div class="controls">
-          <NumberStepper label="pose" value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} />
-          <PlttControl value={plttID} defaultValue={gfx.plttID} pltt={pltt} onChange={setPlttID} />
-        </div>
-        <div class="controls">
-          <label>
-            scale <input type="number" min={1} max={8} value={scale} onInput={(e) => setScale(Number(e.currentTarget.value))} />
-          </label>
-          <label>
-            <input type="checkbox" checked={xflip} disabled={animActive} onChange={(e) => setXflip(e.currentTarget.checked)} /> xflip
-          </label>
-          <label>
-            <input type="checkbox" checked={yflip} disabled={animActive} onChange={(e) => setYflip(e.currentTarget.checked)} /> yflip
-          </label>
-        </div>
+        <Fields>
+          <Field label="ポーズ">
+            <Slider value={poseIdx} min={0} max={gfx.poses.length - 1} onChange={setPose} format={(v) => `${v} / ${gfx.poseCount - 1}`} stepButtons />
+          </Field>
+          <Field label="パレット" title="plttID (OBJ パレットの番号)">
+            <PlttControl value={plttID} defaultValue={gfx.plttID} pltt={pltt} onChange={setPlttID} />
+          </Field>
+          <Field label="拡大">
+            <Slider value={scale} min={1} max={8} onChange={setScale} format={(v) => `${v}x`} />
+          </Field>
+          <Field label="反転">
+            <Check checked={xflip} disabled={animActive} onChange={setXflip}>左右</Check>
+            <Check checked={yflip} disabled={animActive} onChange={setYflip}>上下</Check>
+          </Field>
+        </Fields>
       </Card>
-      <Card title="アニメ">
-        <AuxAnimPanel
-          refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
-          poseCount={gfx.poseCount}
-          poseLimit={gfx.poses.length}
-          animFiles={animFiles}
-          active={animActive}
-          setActive={setAnimActive}
-          onPose={(i, x, y) => {
-            setPoseIdx(i);
-            setXflip(x);
-            setYflip(y);
-          }}
-        />
-      </Card>
-      <Card title="情報">
+      <AuxAnimPanel
+        refs={decomp(AUX_ANIM_REFS)[gfx.id] ?? []}
+        poseCount={gfx.poseCount}
+        poseLimit={gfx.poses.length}
+        animFiles={animFiles}
+        active={animActive}
+        setActive={setAnimActive}
+        onPose={(i, x, y) => {
+          setPoseIdx(i);
+          setXflip(x);
+          setYflip(y);
+        }}
+      />
+      {pose && (
+        <Card title={`ポーズ ${poseIdx}${poseIdx >= gfx.poseCount ? " (後ろのエントリのもの)" : ""}`} tip="表はサブスプライト (OBJ 1 枚ずつ). タイルは先頭から順に詰めて使う. 位置は原点から">
+          <InfoTable
+            rows={[
+              ["tiles", `${pose.tileCount} 枚`, `ファイル全体のタイルの ${pose.tileNum} 枚目から続けて使う`],
+              ["plttID", pose.plttID, poseIdx === 0 ? "描画に使うのは最初のポーズのこの値" : "ゲームは描画に使わない (最初のポーズの値を使う)"],
+            ]}
+          />
+          <table class="pltt-table striped sub-table">
+            <thead>
+              <tr>
+                <th>OBJ</th>
+                <th>大きさ</th>
+                <th>位置 (px)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {pose.subsprites.map((sub, i) => {
+                const [w, h] = OBJ_SIZE[sub.shape] ?? [0, 0];
+                return (
+                  <tr key={i}>
+                    <td>{i}</td>
+                    <td>{w}x{h}</td>
+                    <td>({sub.x}, {sub.y})</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </Card>
+      )}
+      <Card title="Metadata">
         <InfoTable
           rows={[
-            ["poses", `${gfx.poseCount} (+${gfx.poses.length - gfx.poseCount} after this entry)`],
-            ["size", `${gfx.pw}x${gfx.ph}`],
-            ["offset", `(${gfx.px}, ${gfx.py})`],
-            ["plttID", gfx.plttID],
-            ...(pose
-              ? [
-                ["pose", `#${poseIdx}${poseIdx >= gfx.poseCount ? " (後ろのエントリのポーズ)" : ""}`],
-                ["subsprites", pose.subsprites.length],
-                ["pose tiles", `${pose.tileCount} (from ${pose.tileNum})`],
-                ["pose plttID", pose.plttID],
-              ] as [string, string | number][]
-              : []),
+            ["box", `${gfx.pw}x${gfx.ph} px, 原点から (${gfx.px}, ${gfx.py})`, "画面外判定の矩形 (pw, ph, px, py). 表示には影響しない"],
+            ["plttID", gfx.plttID, "パレットの既定値 (最初のポーズの値)"],
           ]}
         />
       </Card>
@@ -232,60 +251,57 @@ export const AuxAnimPanel: FunctionComponent<{
   const sortedFiles = [...animFiles].sort((a, b) => a.id - b.id);
 
   return (
-    <div class="anim-panel">
-      <div class="controls">
-        <label>
-          anim file{" "}
-          <select value={fileID ?? ""} onChange={(e) => changeFile(e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}>
-            <option value="">(none)</option>
-            {refs.length > 0 && (
-              <optgroup label="ソースで一緒に使われているもの">
-                {sortedFiles.filter((f) => refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
+    <>
+      <Card title="アニメ">
+        <Fields>
+          <Field label="アニメファイル">
+            <select class="wide" value={fileID ?? ""} onChange={(e) => changeFile(e.currentTarget.value === "" ? null : Number(e.currentTarget.value))}>
+              <option value="">(なし)</option>
+              {refs.length > 0 && (
+                <optgroup label="ソースで一緒に使われているもの">
+                  {sortedFiles.filter((f) => refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
+                </optgroup>
+              )}
+              <optgroup label="その他">
+                {sortedFiles.filter((f) => !refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
               </optgroup>
-            )}
-            <optgroup label="その他">
-              {sortedFiles.filter((f) => !refIDs.has(f.id)).map((f) => <option key={f.id} value={f.id}>{animFileLabel(f, poseCount, poseLimit)}</option>)}
-            </optgroup>
-          </select>
-        </label>
-        {file && (
-          <>
-            <label>
-              anim{" "}
-              <select value={animIdx} onChange={(e) => changeAnim(Number(e.currentTarget.value))}>
-                {file.anims.map((a, i) => (
-                  <option key={i} value={i}>
-                    {i}: {a.cmdCount} cmds, {a.variantCount} variants, {a.variants[0].reduce((t, c) => t + cmdDuration(c), 0)}f
-                  </option>
+            </select>
+          </Field>
+          {fileID !== null && refIDs.has(fileID) && (
+            <Field label="使われ方">
+              <span class="note mono">{refs.find(([id]) => id === fileID)![1]}</span>
+            </Field>
+          )}
+          {file && (
+            <>
+              <Field label="アニメ">
+                <select class="wide" value={animIdx} onChange={(e) => changeAnim(Number(e.currentTarget.value))}>
+                  {file.anims.map((a, i) => (
+                    <option key={i} value={i}>
+                      {i}: {a.cmdCount} コマ, バリアント {a.variants.length} 個, {a.variants[0].reduce((t, c) => t + cmdDuration(c), 0)}f
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="バリアント" title="AuxAnim の variant">
+                <Segmented options={(anim?.variants ?? []).map((_, i) => [i, String(i)] as const)} value={variant} onChange={changeVariant} />
+              </Field>
+              <Field label="フラグ" title="AuxAnim_SetAnim の flags">
+                {ANIM_PLAY_FLAG_NAMES.map(([bit, n]) => (
+                  <Check key={bit} checked={(flags & bit) !== 0} onChange={(on) => changeFlags(on ? flags | bit : flags & ~bit)}>
+                    {n}
+                  </Check>
                 ))}
-              </select>
-            </label>
-            <label>
-              variant{" "}
-              <select value={variant} onChange={(e) => changeVariant(Number(e.currentTarget.value))}>
-                {anim?.variants.map((_, i) => <option key={i} value={i}>{i}</option>)}
-              </select>
-            </label>
-          </>
-        )}
-      </div>
-      {fileID !== null && refIDs.has(fileID) && <p class="anim-refs">{refs.find(([id]) => id === fileID)![1]}</p>}
-      {file && (
-        <>
-          <div class="controls">
-            {ANIM_PLAY_FLAG_NAMES.map(([bit, n]) => (
-              <label key={bit}>
-                <input type="checkbox" checked={(flags & bit) !== 0} onChange={(e) => changeFlags(e.currentTarget.checked ? flags | bit : flags & ~bit)} /> {n}
-              </label>
-            ))}
-            <label title="0x40 (64) で等速">
-              speed <input type="number" min={0} max={0xFFFF} value={speed} onInput={(e) => changeSpeed(Number(e.currentTarget.value))} />
-            </label>
-          </div>
-          <div class="controls">
-            <button type="button" onClick={() => start(file, animIdx, variant, flags)} title="今の状態のまま AuxAnim_SetAnim を呼ぶ (同じアニメを同じ向きで再生中なら flags だけ変わる)">SetAnim</button>
-            <button type="button" onClick={() => start(file, animIdx, variant, flags, true)} title="AuxAnimState を作り直してから AuxAnim_SetAnim する">restart</button>
-            <button type="button" disabled={!active} onClick={() => setPlaying(!playing)}>{playing ? "pause" : "play"}</button>
+              </Field>
+              <Field label="速度">
+                <Slider value={speed} min={0} max={256} onChange={changeSpeed} format={(v) => `${v} (${(v / 64).toFixed(2)}x)`} />
+              </Field>
+            </>
+          )}
+        </Fields>
+        {file && (
+          <ButtonRow>
+            <button type="button" disabled={!active} onClick={() => setPlaying(!playing)}>{playing ? "❚❚ 一時停止" : "▶ 再生"}</button>
             <button
               type="button"
               disabled={!active || playing}
@@ -294,27 +310,33 @@ export const AuxAnimPanel: FunctionComponent<{
                 sync();
               }}
             >
-              step
+              ▸| 1 フレーム
             </button>
-          </div>
-          {active && (
-            <>
-              <p class="anim-status">
-                frame {frames.current}, cmd {s.cmdIdx}/{s.cmdCount}, tick {s.tick}/{s.wait}, duration {s.duration}, speed {s.speed}, flags {flagNames(s.flags, ANIM_PLAY_FLAG_NAMES)}, sprite: pose {s.poseIdx}
-                {s.xflip && " XFLIP"}
-                {s.yflip && " YFLIP"}, loops {loops.current}
-              </p>
-              <div class="anim-cmds">
-                {cmds.map((c, i) => (
-                  <span key={i} class={i === s.cmdIdx ? "anim-cmd current" : "anim-cmd"}>
-                    #{i} pose {cmdPose(c)} / {cmdDuration(c)}f{cmdFlip(c) ? ` ${flagNames(cmdFlip(c), ANIM_PLAY_FLAG_NAMES)}` : ""}
-                  </span>
-                ))}
-              </div>
-            </>
-          )}
-        </>
+            <button type="button" onClick={() => start(file, animIdx, variant, flags)} title="今の状態のまま AuxAnim_SetAnim を呼ぶ (同じアニメを同じ向きで再生中なら flags だけ変わる)">SetAnim</button>
+            <button type="button" onClick={() => start(file, animIdx, variant, flags, true)} title="AuxAnimState を作り直してから AuxAnim_SetAnim する">最初から</button>
+          </ButtonRow>
+        )}
+      </Card>
+      {file && active && (
+        <Card title="アニメの状態">
+          <InfoTable
+            rows={[
+              ["frame", frames.current, "SetAnim してから進めたフレーム数"],
+              ["cmd", `${s.cmdIdx} / ${s.cmdCount}`, "今のコマ / コマ数"],
+              ["tick", `${s.tick} / ${s.wait}`, "今のコマで経ったフレーム / 速度を掛けた後のコマの長さ"],
+              ["duration", s.duration, "コマの長さ (速度を掛ける前)"],
+              ["speed", `${s.speed} (${(s.speed / 64).toFixed(2)}x)`],
+              ["flags", flagNames(s.flags, ANIM_PLAY_FLAG_NAMES)],
+              ["sprite", `pose ${s.poseIdx}${s.xflip ? ", 左右反転" : ""}${s.yflip ? ", 上下反転" : ""}`],
+              ["loops", loops.current, "一巡した回数"],
+            ]}
+          />
+          <AnimTimeline
+            items={cmds.map((c) => ({ label: `pose ${cmdPose(c)}${cmdFlip(c) ? ` ${flagNames(cmdFlip(c), ANIM_PLAY_FLAG_NAMES)}` : ""}`, duration: cmdDuration(c) }))}
+            current={s.cmdIdx}
+          />
+        </Card>
       )}
-    </div>
+    </>
   );
 };

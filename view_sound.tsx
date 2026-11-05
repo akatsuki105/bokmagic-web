@@ -7,7 +7,7 @@ import type { ROMFile } from "./rom.ts";
 import { detectEngine, encodeWav, type Engine, readSongHeader, readSongTable, type Rendered, type RenderOptions, renderSong, type SongEntry } from "m4a/mod.ts";
 import { SONG_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
-import { AssetView, Card, hashID, hex4, InfoTable, NumberStepper, useHashID } from "./components.tsx";
+import { AssetView, ButtonRow, Card, Check, Field, Fields, hashID, hex4, type InfoRow, InfoTable, NumberStepper, useHashID } from "./components.tsx";
 import { audioOutput, useVolume } from "./audio.ts";
 
 // 曲テーブルの位置と m4aSoundMode の値 (ミキサーの周波数・同時発音数・リバーブ) は ROM から探す
@@ -170,13 +170,13 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
   };
 
   const desc = decomp(SONG_NAMES)[song.index]?.[1];
-  const info: [string, string | number][] = [
-    ["header", hex8(header.address)],
+  const info: InfoRow[] = [
     ["tracks", header.trackCount],
-    ["voicegroup", hex8(header.voicegroup)],
-    ["priority", header.priority],
-    ["reverb", header.reverb & 0x80 ? header.reverb & 0x7F : `${opts.reverb} (ROM の既定)`],
-    ["player", song.ms],
+    ["player", song.ms, "鳴らす MusicPlayer の番号 (gMPlayTable の何番目か)"],
+    ["priority", header.priority, "同じ MusicPlayer で鳴っている曲との優先度. ここでの再生には使っていない"],
+    ["reverb", header.reverb & 0x80 ? header.reverb & 0x7F : `${opts.reverb} (ROM の既定)`, "曲ヘッダの bit7 が立っていればその値, 立っていなければ m4aSoundMode の値"],
+    ["header", hex8(header.address), "曲ヘッダの位置"],
+    ["voicegroup", hex8(header.voicegroup), "音色の表の位置"],
   ];
 
   return (
@@ -187,8 +187,8 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
         <>
           <div class="player">
             <div class="controls">
-              <button type="button" class="play" onClick={() => (playing ? pause() : start(pos))}>{playing ? "一時停止" : "再生"}</button>
-              <button type="button" onClick={stop} disabled={!playing && pos === 0}>停止</button>
+              <button type="button" class="play" onClick={() => (playing ? pause() : start(pos))}>{playing ? "❚❚ 一時停止" : "▶ 再生"}</button>
+              <button type="button" onClick={stop} disabled={!playing && pos === 0}>■ 停止</button>
               <span class="mono">{formatTime(pos)} / {rendered ? formatTime(duration) : "-:--"}</span>
             </div>
             <div class="controls seek">
@@ -201,29 +201,31 @@ const SongView: FunctionComponent<{ rom: ROMFile; song: SongEntry; opts: RenderO
       )}
     >
       {header.trackCount > 0 && (
-        <Card title="再生">
-          <div class="controls">
-            <NumberStepper
-              label="ループ"
-              value={loops}
-              min={1}
-              max={9}
-              onChange={(v) => {
-                stop();
-                setLoops(v);
-                setRendered(null);
-              }}
-            />
-            <label>
-              <input type="checkbox" checked={repeat} onChange={(e) => setRepeat(e.currentTarget.checked)} /> 繰り返し再生
-            </label>
-          </div>
-          <div class="controls">
+        <Card title="書き出し">
+          <Fields>
+            <Field label="ループ" title="GOTO で戻った回数. この回数ループしたところでフェードアウトする">
+              <NumberStepper
+                value={loops}
+                min={1}
+                max={9}
+                onChange={(v) => {
+                  stop();
+                  setLoops(v);
+                  setRendered(null);
+                }}
+              />
+              <span class="note">回</span>
+            </Field>
+            <Field label="繰り返し">
+              <Check checked={repeat} onChange={setRepeat}>最後まで来たら最初から</Check>
+            </Field>
+          </Fields>
+          <ButtonRow>
             <button type="button" onClick={download}>WAV で保存</button>
-          </div>
+          </ButtonRow>
         </Card>
       )}
-      <Card title="情報">
+      <Card title="Metadata">
         <InfoTable rows={info} />
       </Card>
     </AssetView>
