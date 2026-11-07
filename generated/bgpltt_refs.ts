@@ -2,15 +2,15 @@
 
 // BG パレットのファイルID -> ソース中で GetBgPlttFile(id) などで読まれている場所 (定数か16進数リテラルで書かれているものだけ)
 export const BGPLTT_REFS: Record<number, string> = {
-  0x26BB: "entity_723e.c:72, entity_7999.c:210, entity_d53d.c:72, link_battle_lobby.c:92",
+  0x26BB: "crossover_lobby.c:86, crossover_result.c:54, entity_7999.c:209, entity_d53d.c:71, link_battle_lobby.c:92",
   0x313A: "pile_driver.c:383",
   0x519C: "entity_8d5c.c:57",
-  0x5F5E: "menu.c:933",
-  0xA41A: "enemy_dex.c:608, forge.c:668, forge_ef6f.c:124, shop_coffin.c:402, shop_item.c:1423, shop_weapon.c:844, warehouse.c:1740, weapon_dex.c:525",
+  0x5F5E: "menu.c:2140",
+  0xA41A: "enemy_dex.c:851, forge.c:667, forge_ef6f.c:123, shop_coffin.c:400, shop_item.c:1422, shop_weapon.c:843, warehouse.c:1739, weapon_dex.c:523",
   0xD8C3: "title.c:81",
-  0xE9C3: "game_result.c:332, title_menu.c:4160",
-  0xEAA8: "dark_loans.c:508, menu.c:934, solar_bank.c:476",
-  0xECBF: "menu.c:932",
-  0xEFDA: "entity_b88c.c:71, entity_d53d.c:62, menu.c:931, title_menu.c:237",
+  0xE9C3: "game_result.c:332, title_menu.c:4161",
+  0xEAA8: "dark_loans.c:507, menu.c:2141, solar_bank.c:474",
+  0xECBF: "menu.c:2139",
+  0xEFDA: "crossover_battle.c:389, entity_b88c.c:71, entity_d53d.c:61, menu.c:2138, menu.c:10673, title_menu.c:238",
   0xF0DC: "title.c:190",
 };
