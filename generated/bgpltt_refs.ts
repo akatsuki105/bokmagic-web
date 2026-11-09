@@ -2,11 +2,11 @@
 
 // BG パレットのファイルID -> ソース中で GetBgPlttFile(id) などで読まれている場所 (定数か16進数リテラルで書かれているものだけ)
 export const BGPLTT_REFS: Record<number, string> = {
-  0x26BB: "crossover_lobby.c:86, crossover_result.c:54, entity_7999.c:209, entity_d53d.c:71, link_battle_lobby.c:92",
+  0x26BB: "crossover_lobby.c:86, crossover_result.c:54, entity_7999.c:206, entity_d53d.c:71, link_battle_lobby.c:92",
   0x313A: "pile_driver.c:383",
   0x519C: "entity_8d5c.c:57",
   0x5F5E: "menu.c:2140",
-  0xA41A: "enemy_dex.c:851, forge.c:667, forge_ef6f.c:123, shop_coffin.c:400, shop_item.c:1422, shop_weapon.c:843, warehouse.c:1739, weapon_dex.c:523",
+  0xA41A: "enemy_dex.c:851, forge.c:667, forge_ef6f.c:123, shop_coffin.c:400, shop_item.c:1422, shop_weapon.c:843, warehouse.c:1738, weapon_dex.c:523",
   0xD8C3: "title.c:81",
   0xE9C3: "game_result.c:332, title_menu.c:4161",
   0xEAA8: "dark_loans.c:507, menu.c:2141, solar_bank.c:474",
