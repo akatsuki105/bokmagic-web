@@ -10,8 +10,8 @@ import { decodeScript, type ScriptDirectory } from "./script.ts";
 // アセットを読み込むサブルーチン (src/vm_commands.s)
 export const SUB_LOAD_TILESET = 0x11D4; // Cmd_LoadTileSet, .t BG, .d タイルセット, .c 部品IDの列, .s 読み込み先, .m タイルマップ (読み込み先をその loadOffset にする)
 export const SUB_LOAD_TILEMAP = 0x7A27; // Cmd_LoadTileMap, .d タイルマップ, .t BG の構成, .n レイヤ数, .i / .c レイヤの並び
-export const SUB_MAP_PLTT = 0x4AE5; // Entity4AE5_Create, EntityCreate で呼ばれる, .p BG パレットの列 (最大4)
-export const SUB_CREATE_BG = 0xB4B4; // Cmd_CreateBG, EntityCreate で呼ばれる, .i BG 番号, .p BG の優先度, .d タイルマップ
+export const SUB_MAP_PLTT = 0x4AE5; // Entity4AE5_Create, Chara で呼ばれる, .p BG パレットの列 (最大4)
+export const SUB_CREATE_BG = 0xB4B4; // Cmd_CreateBG, Chara で呼ばれる, .i BG 番号, .p BG の優先度, .d タイルマップ
 export const SUB_LOAD_COLLISION = 0x30AD; // Map_LoadMapScripted, .p 当たり判定マップ
 export const SUB_SET_STAGE = 0x82B3; // Cmd_82B3, .s StageID (gStat->stageID)
 
@@ -193,10 +193,10 @@ export class ScriptScanner {
         }
         return;
       }
-      case ControlType.SubroutineCall:
+      case ControlType.Command:
         if (head === SUB_LOAD_TILESET || head === SUB_LOAD_TILEMAP || head === SUB_LOAD_COLLISION || head === SUB_SET_STAGE) this.record(script, head, i, env);
         return;
-      case ControlType.EntityCreate:
+      case ControlType.Chara:
         if (head === SUB_MAP_PLTT || head === SUB_CREATE_BG) this.record(script, head, i, env);
         return;
     }
@@ -236,8 +236,8 @@ export class ScriptScanner {
       }
       if (i.insnType === InsnType.Control) {
         const head = i.children[0]?.insnType === InsnType.Constant ? i.children[0].value & 0xFFFFFF : null;
-        if (i.value === ControlType.SubroutineCall && (head === SUB_LOAD_TILEMAP || head === SUB_LOAD_TILESET || head === SUB_LOAD_COLLISION)) direct.add(id);
-        if (i.value === ControlType.EntityCreate && head === SUB_MAP_PLTT) direct.add(id);
+        if (i.value === ControlType.Command && (head === SUB_LOAD_TILEMAP || head === SUB_LOAD_TILESET || head === SUB_LOAD_COLLISION)) direct.add(id);
+        if (i.value === ControlType.Chara && head === SUB_MAP_PLTT) direct.add(id);
         if (i.value === ControlType.LoadMap && head !== null) roots.add(head);
       }
       for (const c of i.children) visit(id, c);

@@ -227,7 +227,7 @@ const stagesFrom = (calls: LoadCall[]): number[] => {
   return [...new Set(sorted.map((c) => c.args.s?.[0]).filter((v): v is number => v !== null && v !== undefined))];
 };
 
-// マップの StageID: root から届く Cmd_82B3, 無ければ root を呼んでいるスクリプトから (部屋のスクリプトが Script_0x0072(stage) を呼んでから読み込みスクリプトを呼ぶ形がある)
+// マップの StageID: root から届く Cmd_82B3, 無ければ root を呼んでいるスクリプトから (部屋のスクリプトが Scr_0x0072(stage) を呼んでから読み込みスクリプトを呼ぶ形がある)
 const mapStage = (rom: ROMFile, m: MapLoads): number | null => {
   const own = stagesFrom(m.stages);
   if (own.length > 0) return own[0];

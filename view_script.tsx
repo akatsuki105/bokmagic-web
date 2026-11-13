@@ -26,6 +26,8 @@ const names = () => {
 };
 
 export const scriptHref = (id: number) => `#script/${hex4(id)}`;
+// スクリプトの名前 (decomp の Scr_xxx, 無ければ Scr_0xXXXX)
+export const scriptLabel = (id: number) => scriptName(id, names().ctx);
 
 export const ScriptViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const dir = scriptDirectory(rom);
@@ -70,7 +72,7 @@ const ScriptView: FunctionComponent<{ rom: ROMFile; script: ScriptEntry }> = ({ 
     }
   }, [rom, script]);
   const desc = decomp(SCRIPT_NAMES)[script.id]?.[1];
-  const mapRoot = useMemo(() => mapEntries(rom).find((e) => e.root === script.id), [rom, script]);
+  const mapRoot = useMemo(() => mapEntries(rom).find((e) => e.root - 1 === script.id), [rom, script]);
 
   return (
     <AssetView
@@ -131,9 +133,9 @@ const ScriptLinks: FunctionComponent<{ ids: number[] }> = ({ ids }) => (
 const LinkedText: FunctionComponent<{ text: string }> = ({ text }) => {
   const parts: (string | preact.JSX.Element)[] = [];
   let last = 0;
-  for (const m of text.matchAll(/\bScript_\w+/g)) {
+  for (const m of text.matchAll(/\bScr_\w+/g)) {
     const name = m[0];
-    const id = /^Script_0x[0-9A-F]{4}$/.test(name) ? parseInt(name.slice(9), 16) : names().idByName.get(name);
+    const id = /^Scr_0x[0-9A-F]{4}$/.test(name) ? parseInt(name.slice(6), 16) : names().idByName.get(name);
     if (id === undefined) continue;
     parts.push(text.slice(last, m.index), <a href={scriptHref(id)}>{name}</a>);
     last = m.index! + name.length;

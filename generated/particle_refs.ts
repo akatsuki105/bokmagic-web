@@ -16,7 +16,7 @@ export const PARTICLE_POSE_NAMES: Record<number, Record<number, [name: string, d
 
 // グループID -> [アニメファイルID, 同じ関数で使われている場所][] (ROM のデータからは決まらないのでソースから拾ったもの)
 export const PARTICLE_ANIM_REFS: Record<number, [anim: number, where: string][]> = {
-  0x1C1A: [[0x9AF2, "map_item.c:628"], [0xD1B8, "bamboo_shoots.c:295, dust.c:124, eff_blood.c:216, eff_elemcond.c:410, eff_smoke.c:167, entity_08016ba4.c:176, entity_081eb2f0.c:123, spirit_bugs.c:255"], [0xD41F, "bamboo_shoots.c:296"]],
+  0x1C1A: [[0x9AF2, "map_item.c:628"], [0xD1B8, "bamboo_shoots.c:295, dust.c:124, eff_blood.c:216, eff_elemcond.c:410, eff_smoke.c:167, entity_08016ba4.c:176, entity_081eb2f0.c:159, spirit_bugs.c:255"], [0xD41F, "bamboo_shoots.c:296"]],
   0x1C1C: [[0x6830, "emote.c:1761"], [0xD1B8, "bamboo_shoots.c:295"], [0xD41F, "bamboo_shoots.c:296, emote.c:1762"]],
 };
 

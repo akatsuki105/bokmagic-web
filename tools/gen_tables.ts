@@ -2,7 +2,7 @@
 
 // boktai2 decomp のヘッダとソースから、ビューワが使う表を generated/ に作る
 // - names.ts: SpriteID, アニメファイルID, BG パレットのファイルID, スクリプトID, 文字列ID の定数名
-//   タイルマップ・当たり判定マップのファイルID, StageID, 曲番号 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, include/constants/script.h, strings.h, tilemap.h, collision_map.h, map.h, songs.h)
+//   タイルマップ・当たり判定マップのファイルID, StageID, 曲番号 (include/constants/sprite.h, sprite_animation.h, include/bg_pltt.h, data/scripts/script.h, strings.h, tilemap.h, collision_map.h, map.h, songs.h)
 // - aux_anims.ts: AuxSprite とアニメファイルの組 (ソース中で一緒に使われているもの)
 // - bgpltt_refs.ts: BG パレットがソース中で読まれている場所
 // - particle_refs.ts: パーティクルのグループと同じ関数で使われているアニメファイルと OBJ パレット, グループのポーズ名
@@ -51,12 +51,8 @@ const stages = parseDefines(await Deno.readTextFile(`${decomp}/include/constants
 const songs = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/songs.h`), /^(SONG|BGM|SE|ME|CRY|NOISE|VO|SOUND)_/);
 const strings = parseDefines(await Deno.readTextFile(`${decomp}/data/scripts/strings.h`), /^(STR|BIN)_/);
 
-// `#define Script_StaffRoll Script_0x1040 // desc` を拾う
-const scriptNames: Define[] = [];
-for (const line of (await Deno.readTextFile(`${decomp}/data/scripts/script.h`)).split("\n")) {
-  const m = line.match(/^#define (Script_\w+)\s+Script_0x([0-9A-Fa-f]+)\s*(?:\/\/\s*(.*))?$/);
-  if (m) scriptNames.push({ name: m[1], id: parseInt(m[2], 16), desc: m[3] ?? "" });
-}
+// `#define Scr_StaffRoll 0x1040 // desc` を拾う. 名前の無いもの (`#define Scr_0x0037 0x0037`) は番号の綴りと同じなので除く
+const scriptNames = parseDefines(await Deno.readTextFile(`${decomp}/data/scripts/script.h`), /^Scr_(?!0x[0-9A-Fa-f]+$)/);
 
 // 同じIDに複数の名前があれば先に書かれた方を採る
 const nameTable = (defs: Define[]) => {
@@ -99,7 +95,7 @@ export const COLLISION_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(collisions)}
 };
 
-// スクリプトID -> [名前, 説明] (include/constants/script.h in boktai2 decomp)
+// スクリプトID -> [名前, 説明] (data/scripts/script.h in boktai2 decomp)
 export const SCRIPT_NAMES: Record<number, [name: string, desc: string]> = {
 ${nameTable(scriptNames)}
 };

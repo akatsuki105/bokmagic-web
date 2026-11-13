@@ -9,6 +9,7 @@ import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap } f
 import { collisionLoads, mapEntries } from "./analysis.ts";
 import type { LoadCall } from "./script_scan.ts";
 import { tilemapHref, tilemapName } from "./view_tilemap.tsx";
+import { scriptHref, scriptLabel } from "./view_script.tsx";
 import { COLLISION_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 import { AssetView, Card, Check, CursorCard, Field, Fields, hashID, hex4, idLabel, type InfoRow, InfoTable, MapLink, NameRef, Segmented, Slider, UsedByCard, useHashID, type UseRef } from "./components.tsx";
@@ -144,7 +145,7 @@ const CollisionView: FunctionComponent<{
       refs.push({ key: `m${e.root}`, kind: "Map", link: <MapLink root={e.root} stage={e.stage} />, detail: pairList(cs), title: [...new Set(cs.map((c) => `Script ${hex4(c.script)}`))].join(", ") });
     }
     for (const c of calls.filter((c) => !inMaps.has(c.address))) {
-      refs.push({ key: `s${c.address}`, kind: "Script", link: <a href={`#script/${hex4(c.script)}`}>Script {hex4(c.script)}</a>, detail: pairList([c]) });
+      refs.push({ key: `s${c.address}`, kind: "Script", link: <a href={scriptHref(c.script)}>{scriptLabel(c.script)}</a>, detail: pairList([c]) });
     }
     return refs;
   }, [rom, map]);

@@ -13,7 +13,7 @@ import { GRAYSCALE_PLTT } from "./render.ts";
 import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap, projectToTilemap, tileAtTilemap } from "./collision.ts";
 import { CollisionOverlay, IsoGrid, type OverlayMode, type WorldHighlight, type WorldLayers, WorldOverlay } from "./collision_overlay.tsx";
 import type { LoadCall } from "./script_scan.ts";
-import { scriptHref } from "./view_script.tsx";
+import { scriptHref, scriptLabel } from "./view_script.tsx";
 import { collisionHref, collisionName, collisionTileRows, NavTable, PathTable, ZoneTable } from "./view_collision.tsx";
 import { tilemapHref, tilemapName } from "./view_tilemap.tsx";
 import { bgplttHref } from "./view_bgpltt.tsx";
@@ -21,7 +21,7 @@ import { type BgPlttChoice, BgPlttSelect, bgpName, Card, Check, CursorCard, Desc
 import { STAGE_NAMES } from "./generated/names.ts";
 import { decomp } from "./decomp.ts";
 
-export const mapHref = (root: number) => `#map/${hex4(root)}`;
+export const mapHref = (root: number) => `#map/${hex4(root - 1)}`;
 
 const tilemapID = (c: LoadCall) => c.args.d?.[0] ?? null;
 
@@ -41,10 +41,11 @@ export const MapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
   const entries = mapEntries(rom);
   const tilesets = useMemo(() => parseTileSets(rom.data, rom.fs, rom.id), [rom]);
   const bgFiles = useMemo(() => parseBgPlttFiles(rom.data, rom.fs), [rom]);
-  const byRoot = (id: number | undefined) => entries.find((e) => e.root === id);
-  const [selected, setSelected] = useState<MapEntry | undefined>(byRoot(hashID("map")) ?? entries[0]);
+  // URL の番号は表示と同じく root - 1
+  const byID = (id: number | undefined) => (id === undefined ? undefined : entries.find((e) => e.root === id + 1));
+  const [selected, setSelected] = useState<MapEntry | undefined>(byID(hashID("map")) ?? entries[0]);
   useHashID("map", (id) => {
-    const e = byRoot(id);
+    const e = byID(id);
     if (e) setSelected(e);
   });
 
@@ -250,7 +251,7 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
         <Card title="Metadata">
           <InfoTable
             rows={[
-              ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root - 1)}</a>, "このマップを読み込むスクリプト (起点). ここから呼ぶスクリプトの読み込みをまとめている"],
+              ["script", <a key="v" href={scriptHref(entry.root - 1)}>{scriptLabel(entry.root - 1)}</a>, "このマップを読み込むスクリプト (起点). ここから呼ぶスクリプトの読み込みをまとめている"],
               ["stage", entry.stage === null ? <span key="v" class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText key="v" stage={entry.stage} />],
               ["palette", pltt.file === null ? "(灰色)" : <NameRef key="v" id={pltt.file} name={bgpName(pltt.file)} href={bgplttHref(pltt.file)} />, "今描いている BG パレット"],
               [
@@ -341,7 +342,7 @@ const SceneLoads: FunctionComponent<{ entry: MapEntry; scene: MapScene }> = ({ e
               {c.conditional && <span class="badge" title="if/switch の中で呼んでいる">条件付き</span>}
             </div>
             <div class="load-args">
-              <a href={scriptHref(c.script)}>Script {hex4(c.script)}</a>
+              <a href={scriptHref(c.script)}>{scriptLabel(c.script)}</a>
               {Object.entries(c.args).map(([k, v]) => (
                 <span key={k} title={`'.${k}'`}>
                   <span class="arg-key">{LOAD_KINDS[kind]?.[1][k] ?? `.${k}`}</span> {v.map((x) => valueText(x, LOAD_DECIMAL[kind]?.includes(k))).join(", ")}

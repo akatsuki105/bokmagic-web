@@ -29,13 +29,13 @@ deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/b
 - 引数なしで動かすと使い方を出す
 - 結果は常に JSON で標準出力に出す。エラーは標準エラー出力に出し、使い方の誤りは終了コード 2、それ以外の失敗は 1
 
-| コマンド                           | 対象                                    | 出すもの                                                                                 |
-| ---------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------- |
-| `list <sprite\|aux\|tilemap\|map>` | —                                       | 一覧 (`items`)                                                                           |
-| `sprite <ID>`                      | MainSprite (`SPRITE_*`)                 | ポーズ数・アニメ数・タイル数・palStart と、選んだポーズのサブスプライト・オフセット・box |
-| `aux <ID>`                         | AuxSprite (`SPRITE_*`)                  | ポーズ数・大きさ・オフセット・plttID と、選んだポーズの中身                              |
-| `tilemap <ID>`                     | タイルマップ (`TILEMAP_*`)              | ヘッダ・レイヤ・タイルの読み込み元・使っているマップ                                     |
-| `map <ID>`                         | マップを読み込むスクリプト (`Script_*`) | ステージ・場面・BG ごとのタイルマップと優先度・パレット・Collision Map                   |
+| コマンド                           | 対象                                 | 出すもの                                                                                 |
+| ---------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------- |
+| `list <sprite\|aux\|tilemap\|map>` | —                                    | 一覧 (`items`)                                                                           |
+| `sprite <ID>`                      | MainSprite (`SPRITE_*`)              | ポーズ数・アニメ数・タイル数・palStart と、選んだポーズのサブスプライト・オフセット・box |
+| `aux <ID>`                         | AuxSprite (`SPRITE_*`)               | ポーズ数・大きさ・オフセット・plttID と、選んだポーズの中身                              |
+| `tilemap <ID>`                     | タイルマップ (`TILEMAP_*`)           | ヘッダ・レイヤ・タイルの読み込み元・使っているマップ                                     |
+| `map <ID>`                         | マップを読み込むスクリプト (`Scr_*`) | ステージ・場面・BG ごとのタイルマップと優先度・パレット・Collision Map                   |
 
 | オプション               | 対象         | 意味                                                                                                 |
 | ------------------------ | ------------ | ---------------------------------------------------------------------------------------------------- |
@@ -52,7 +52,7 @@ deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/b
 | `--scene <n>`            | map          | 場面の番号 (既定 0)                                                                                  |
 | `--hide-bg <a,b,...>`    | map          | 描かない BG 番号                                                                                     |
 
-ID は `0x5D36` のような 16 進数で書く。U32J (rev1, rev0) では decomp の定数名 (`SPRITE_SHADEMAN`, `TILEMAP_7DB3`, `Script_0x02BF` など) も使える (`generated/names.ts` をバンドルに含めている)。U33J と U3IJ では名前は出ず、ID だけ使える。U3IJ (ボクタイ1) では `list map`、`map` は使えない (スクリプトが読めない)。`tilemap` は使えるが、このタイルマップを使うマップは探さないので、タイルは `--set` と `--part` で選ぶ
+ID は `0x5D36` のような 16 進数で書く。U32J (rev1, rev0) では decomp の定数名 (`SPRITE_SHADEMAN`, `TILEMAP_7DB3`, `Scr_0x02BF` など) も使える (`generated/names.ts` をバンドルに含めている)。U33J と U3IJ では名前は出ず、ID だけ使える。U3IJ (ボクタイ1) では `list map`、`map` は使えない (スクリプトが読めない)。`tilemap` は使えるが、このタイルマップを使うマップは探さないので、タイルは `--set` と `--part` で選ぶ
 
 ### 例
 
@@ -65,7 +65,7 @@ deno run --allow-read --allow-write $BOKMAGIC baserom.gba sprite SPRITE_SHADEMAN
 # AuxSprite の全ポーズを 1 枚に並べる
 deno run --allow-read --allow-write $BOKMAGIC baserom.gba aux SPRITE_EFF_1C1B --sheet --scale 2 -o eff.png
 
-# マップ (Script_0x048C が読み込むもの) を、スクリプトが指定するパレットで合成して書き出す
+# マップ (Scr_0x048C が読み込むもの) を、スクリプトが指定するパレットで合成して書き出す
 deno run --allow-read --allow-write $BOKMAGIC baserom.gba map 0x048C -o map.png
 
 # マップの一覧 (スクリプト ID, ステージ, 場面ごとのタイルマップと BG)

@@ -25,7 +25,7 @@ commands:
   sprite <ID|SPRITE_*>            MainSprite の情報を JSON で出す
   aux <ID|SPRITE_*>               AuxSprite の情報を JSON で出す
   tilemap <ID|TILEMAP_*>          タイルマップの情報を JSON で出す
-  map <ScriptID|Script_*>         マップ (マップを読み込むスクリプト) の情報を JSON で出す
+  map <ScriptID|Scr_*>         マップ (マップを読み込むスクリプト) の情報を JSON で出す
 
 options:
   -o, --out <file.png>   画像を PNG で書き出す
@@ -40,7 +40,7 @@ options:
   --scene <n>            map: 場面の番号 (既定 0)
   --hide-bg <a,b,...>    map: 描かない BG 番号
 
-ID は 0x5D36 のような16進数. U32J (rev1, rev0) では decomp の定数名 (SPRITE_SHADEMAN, TILEMAP_7DB3, Script_0x02BF など) も使える`;
+ID は 0x5D36 のような16進数. U32J (rev1, rev0) では decomp の定数名 (SPRITE_SHADEMAN, TILEMAP_7DB3, Scr_0x02BF など) も使える`;
 
 class UsageError extends Error {}
 
@@ -82,7 +82,7 @@ const list = (v: string | boolean | undefined): number[] | undefined => typeof v
 const resolveID = (target: string | undefined, names: Record<number, [string, string]>, what: string): number => {
   if (!target) throw new UsageError(`${what} の ID を指定する`);
   if (/^(0x[0-9a-f]+|\d+)$/i.test(target)) return Number(target);
-  const script = target.match(/^Script_0x([0-9a-f]+)$/i);
+  const script = target.match(/^Scr_0x([0-9a-f]+)$/i);
   if (script) return parseInt(script[1], 16);
   const found = Object.entries(decomp(names)).find(([, [name]]) => name === target);
   if (!found) throw new UsageError(`${what} "${target}" が見つからない (定数名は U32J (rev1, rev0) でだけ使える)`);

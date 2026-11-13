@@ -72,12 +72,12 @@
 | `0x121F` | CallIndirect    | 実行時に決めたIDでスクリプトを呼ぶ                                                        |
 | `0xCD3A` | Return          |                                                                                           |
 | `0xC8BB` | LoadMap         | 先頭の値 (u16) を次のマップの初期化スクリプトIDにする (`VM_Ctrl_LoadMap`)                 |
-| `0x9906` | EntityCreate    | gCommandList から引いた関数を (u16)ID 付きで呼ぶ (`VM_Ctrl_CreateEntity`)                 |
-| `0xB745` | SubroutineCall  | gCommandList から引いた関数を呼ぶ (`VM_Ctrl_CallSubroutine`)                              |
+| `0x9906` | Chara           | gCommandList から引いた関数を (u16)ID 付きで呼ぶ (`VM_Ctrl_CreateEntity`)                 |
+| `0xB745` | Command         | gCommandList から引いた関数を呼ぶ (`VM_Ctrl_CallSubroutine`)                              |
 | `0xB96E` | DebugPrint      |                                                                                           |
 | `0xD4CB` | SetZoneCallback |                                                                                           |
 
-SubroutineCall / EntityCreate が呼ぶ関数の ID は `src/vm_commands.s` の gCommandList にある。呼ばれた関数は `VM_SeekToNamedArg` / `VM_GetNamedArgValue` で名前付き引数 (ラベル) を読む。
+Command / Chara が呼ぶ関数の ID は `src/vm_commands.s` の gCommandList にある。呼ばれた関数は `VM_SeekToNamedArg` / `VM_GetNamedArgValue` で名前付き引数 (ラベル) を読む。
 
 ## パースの手順
 
@@ -89,7 +89,7 @@ SubroutineCall / EntityCreate が呼ぶ関数の ID は `src/vm_commands.s` の 
 
 - `bokcc/` は decomp の `tools/bokcc/` から `instruction_reader.ts`, `instruction.ts`, `eucjp.ts` を手を入れずにコピーしたもの (`bokcc/README.md`, コピー元コミット 902e0595e)。
 - `deno.json` の fmt / lint の exclude に入れてある。直すときはこのリポジトリで書き換えず、decomp 側で直して上書きコピーする。
-- `Instruction` は `insnType` (Constant, Variable, Parameter, Expression, Label, Control, Call, Block, Operator など), `value`, `children`, `address` (ROM オフセット) を持つ木。制御命令の `children[0]` が先頭の値 (SubroutineCall なら関数ID), ラベルは `value` が文字コードで `children` が値の列。式は `children` が逆ポーランド記法の並びで、演算子は `OPERATORS` の番号 (`4` が `+`, `22` が `=` など)。
+- `Instruction` は `insnType` (Constant, Variable, Parameter, Expression, Label, Control, Call, Block, Operator など), `value`, `children`, `address` (ROM オフセット) を持つ木。制御命令の `children[0]` が先頭の値 (Command なら関数ID), ラベルは `value` が文字コードで `children` が値の列。式は `children` が逆ポーランド記法の並びで、演算子は `OPERATORS` の番号 (`4` が `+`, `22` が `=` など)。
 
 ### analysis.ts の関数
 
@@ -109,14 +109,14 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 
 ### 拾う呼び出し
 
-| ID       | 呼び方         | 関数 (decomp)       | 拾う引数                                                                                         |
-| -------- | -------------- | ------------------- | ------------------------------------------------------------------------------------------------ |
-| `0x11D4` | SubroutineCall | Cmd_LoadTileSet     | `.t` BG, `.d` タイルセット, `.c` 部品IDの列, `.s` 読み込み先, `.m` タイルマップ ([bg.md](bg.md)) |
-| `0x7A27` | SubroutineCall | Cmd_LoadTileMap     | `.d` タイルマップ, `.t` BG の構成, `.n` レイヤ数, `.i` / `.c` レイヤの並び ([bg.md](bg.md))      |
-| `0x30AD` | SubroutineCall | Map_LoadMapScripted | `.p` 当たり判定マップ, `.n` タイルマップ ([collision.md](collision.md))                          |
-| `0x82B3` | SubroutineCall | Cmd_82B3            | `.s` StageID (`gStat->stageID` に入る)                                                           |
-| `0x4AE5` | EntityCreate   | Entity4AE5_Create   | `.p` マップの BG パレットの列 (最大4) ([palette.md](palette.md))                                 |
-| `0xB4B4` | EntityCreate   | Cmd_CreateBG        | `.i` BG 番号, `.p` BG の優先度, `.d` タイルマップ ([bg.md](bg.md))                               |
+| ID       | 呼び方  | 関数 (decomp)       | 拾う引数                                                                                         |
+| -------- | ------- | ------------------- | ------------------------------------------------------------------------------------------------ |
+| `0x11D4` | Command | Cmd_LoadTileSet     | `.t` BG, `.d` タイルセット, `.c` 部品IDの列, `.s` 読み込み先, `.m` タイルマップ ([bg.md](bg.md)) |
+| `0x7A27` | Command | Cmd_LoadTileMap     | `.d` タイルマップ, `.t` BG の構成, `.n` レイヤ数, `.i` / `.c` レイヤの並び ([bg.md](bg.md))      |
+| `0x30AD` | Command | Map_LoadMapScripted | `.p` 当たり判定マップ, `.n` タイルマップ ([collision.md](collision.md))                          |
+| `0x82B3` | Command | Cmd_82B3            | `.s` StageID (`gStat->stageID` に入る)                                                           |
+| `0x4AE5` | Chara   | Entity4AE5_Create   | `.p` マップの BG パレットの列 (最大4) ([palette.md](palette.md))                                 |
+| `0xB4B4` | Chara   | Cmd_CreateBG        | `.i` BG 番号, `.p` BG の優先度, `.d` タイルマップ ([bg.md](bg.md))                               |
 
 `0x30AD` の `.n` はゲーム側では読むだけで使わない (`Map_LoadMapScripted` のコメント)。ツールはこれをタイルマップIDとみなして、当たり判定をどの場面のタイルマップに付けるかを決めている (推測に基づく対応付け)。
 
@@ -139,13 +139,13 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 - **代入** (式の文): 式の中のブロックやスクリプト呼び出しは中まで実行する。左辺が変数で `=` を含むとき、`[変数, 右辺, =]` の3要素なら右辺の値を入れ、それ以外 (`v1 = p0 + 1` など) は `null` にする。
 - **スクリプト呼び出し (`0x70`)**: 引数を評価して `params` に束縛し、呼び先の命令木を新しい環境で実行する。`conditional` は呼び出し元のものを引き継ぐ。呼び出しの深さは `MAX_DEPTH` = 16 まで。今の呼び出し列に既にあるID (再帰) は展開しない。
 - **if / switch**: 節を「入る条件」と本体の組に並べ直す (else / default は条件 1、switch の case は `head === 値`)。前から順に見て、条件が 0 の節は飛ばし、定数で真の節に当たればそこだけ実行して終わる。条件が `null` の節に当たったら、そこから後ろの節を全部、変数の写しで `conditional = true` にして実行し、終わった後の変数を合流させる (どの節にも入らない場合も合流に含める)。食い違った変数は `null` になる。
-- **記録**: SubroutineCall / EntityCreate の先頭の値が上の表の ID なら、ラベルの値を評価して `LoadCall` にする。それ以外の制御命令 (LoadMap, CallIndirect, Return など) の中は見ない。
+- **記録**: Command / Chara の先頭の値が上の表の ID なら、ラベルの値を評価して `LoadCall` にする。それ以外の制御命令 (LoadMap, CallIndirect, Return など) の中は見ない。
 
 ### 起点 (`roots()`)
 
 全スクリプトの命令木を1回ずつ (同じ offset は1回) 見て、次を起点にする。
 
-1. `0x7A27` / `0x11D4` / `0x30AD` の SubroutineCall か `0x4AE5` の EntityCreate を直接含むスクリプト。
+1. `0x7A27` / `0x11D4` / `0x30AD` の Command か `0x4AE5` の Chara を直接含むスクリプト。
 2. 1 を定数で呼んでいる呼び出し元を `ROOT_LEVELS` = 3 段まで遡ったもの。U33J は ID を引数で2-3段受け渡してから読み込むので、引数が定数で決まる高さから展開する必要がある。
 3. LoadMap (`0xC8BB`) の行き先のスクリプトID。
 
@@ -162,8 +162,8 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 
 - Script タブ (`view_script.tsx`): 左にスクリプトの一覧 (ID か名前で絞り込み)、右に .bokc、ID, ROM アドレス (`offset + 0x08000000`), variables (`varCount`), called by (`scriptCallers`), 同じ offset を指す別のID (「同じ実体」, 開いたときだけリンクを作る) を出す。
 - 選んでいるスクリプトは URL の `#script/0xXXXX` に入れる (`scriptHref`)。Map タブと Collision タブはここへリンクする。
-- .bokc の中の `Script_...` の名前はリンクにする。
-- スクリプト名と文字列名 (`generated/names.ts` の SCRIPT_NAMES, STRING_NAMES, decomp の `include/constants/script.h` と `strings.h` から作る) は U32J rev1 と rev0 のときだけ使う (`decomp.ts`)。それ以外の ROM では `Script_0xXXXX` のような番号の名前になる (`bokcc/instruction.ts` の `scriptName`)。
+- .bokc の中の `Scr_...` の名前はリンクにする。
+- スクリプト名と文字列名 (`generated/names.ts` の SCRIPT_NAMES, STRING_NAMES, decomp の `data/scripts/script.h` と `strings.h` から作る) は U32J rev1 と rev0 のときだけ使う (`decomp.ts`)。それ以外の ROM では `Scr_0xXXXX` のような番号の名前になる (`bokcc/instruction.ts` の `scriptName`)。
 
 ## 根拠
 
@@ -178,11 +178,11 @@ ROM 全体を見ないと決まらないものを ROM ごとに1回だけ計算�
 - `src/map_pltt_4ae5.c`: `Entity4AE5_Create`, `Entity4AE5_Init` (`.p` を最大4個読む)
 - `src/menu.c`: `Cmd_82B3`, `Cmd_515D`, `FUN_0808fc14`
 - `src/entity_d438.c`: `Cmd_1B77`
-- `data/scripts/scripts.bokc`: `Script_0x001D`, `Script_0x0020`
+- `data/scripts/scripts.bokc`: `Scr_0x001D`, `Scr_0x0020`
 - `include/constants/strings.h`: `STR_MAP_CODENAME` = `0x14F9`, `STR_STARTMENU_MAP` = `0x1826`
 
 ## 未解明
 
-- **マップ名の対応**: マップのコードネーム (String_14F9 から並ぶ文字列) は `Script_0x001D` で `EntityCreate(0x1B77, ..., .s = StringRef(STR_MAP_CODENAME))` に渡されるが、製品版の `Cmd_1B77` は中身が空なので、コード上はマップとコードネームの対応が無い。
-- **表示用のマップ名**: 表示名 (String_1826 から並ぶ文字列) はフロアごとにあり、`Script_0x0020` でスタートメニューに `.A = StringRef(STR_STARTMENU_MAP)` として渡される。どの添字を引くかは確認できていない。候補は `Cmd_515D` が `.f` から入れる `gStat->unk_256` で、`FUN_0808fc14` (menu.c) が stageID と `unk_256` から行番号を引いている (推測)。
+- **マップ名の対応**: マップのコードネーム (String_14F9 から並ぶ文字列) は `Scr_0x001D` で `Chara(0x1B77, ..., .s = StringRef(STR_MAP_CODENAME))` に渡されるが、製品版の `Cmd_1B77` は中身が空なので、コード上はマップとコードネームの対応が無い。
+- **表示用のマップ名**: 表示名 (String_1826 から並ぶ文字列) はフロアごとにあり、`Scr_0x0020` でスタートメニューに `.A = StringRef(STR_STARTMENU_MAP)` として渡される。どの添字を引くかは確認できていない。候補は `Cmd_515D` が `.f` から入れる `gStat->unk_256` で、`FUN_0808fc14` (menu.c) が stageID と `unk_256` から行番号を引いている (推測)。
 - `ScriptDirectoryOffsets.unknown` と specialScriptData の中身。
