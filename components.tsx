@@ -111,7 +111,7 @@ export const stageShort = (stage: number | null) => {
 };
 
 // Map へのリンク ("0x02BF 6番街")
-export const MapLink: FunctionComponent<{ root: number; stage: number | null }> = ({ root, stage }) => <a href={`#map/${hex4(root)}`}>{`${hex4(root)} ${stageShort(stage)}`.trim()}</a>;
+export const MapLink: FunctionComponent<{ root: number; stage: number | null }> = ({ root, stage }) => <a href={`#map/${hex4(root)}`}>{`${hex4(root - 1)} ${stageShort(stage)}`.trim()}</a>;
 
 // 本体の欄の中の見出し (ポーズ一覧 など)
 export const StageTitle: FunctionComponent<{ tip?: string }> = ({ tip, children }) => (

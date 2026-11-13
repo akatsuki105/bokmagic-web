@@ -54,7 +54,7 @@ export const MapViewer: FunctionComponent<{ rom: ROMFile }> = ({ rom }) => {
         {entries.map((e) => (
           <li key={e.root} class={e === selected ? "selected" : ""} title={e.scenes.map(sceneLabel).join("\n")}>
             <a href={mapHref(e.root)}>
-              {hex4(e.root)} {stageShort(e.stage)}
+              {hex4(e.root - 1)} {stageShort(e.stage)}
             </a>
           </li>
         ))}
@@ -86,7 +86,7 @@ const MapView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; ts: TileSet | 
   return (
     <div class="sprite-view split-view">
       <h2>
-        {hex4(entry.root)} {stageShort(entry.stage)}
+        {hex4(entry.root - 1)} {stageShort(entry.stage)}
       </h2>
       <SceneView
         key={sceneIdx}
@@ -250,7 +250,7 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
         <Card title="Metadata">
           <InfoTable
             rows={[
-              ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root)}</a>, "このマップを読み込むスクリプト (起点). ここから呼ぶスクリプトの読み込みをまとめている"],
+              ["script", <a key="v" href={scriptHref(entry.root)}>Script {hex4(entry.root - 1)}</a>, "このマップを読み込むスクリプト (起点). ここから呼ぶスクリプトの読み込みをまとめている"],
               ["stage", entry.stage === null ? <span key="v" class="dim">このマップでは設定していません (前のマップのものを引き継ぐ)</span> : <StageText key="v" stage={entry.stage} />],
               ["palette", pltt.file === null ? "(灰色)" : <NameRef key="v" id={pltt.file} name={bgpName(pltt.file)} href={bgplttHref(pltt.file)} />, "今描いている BG パレット"],
               [
