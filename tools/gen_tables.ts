@@ -49,11 +49,11 @@ const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constan
 const collisions = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/collision_map.h`), /^HP_/);
 const stages = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/map.h`), /^ST_/);
 const songs = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/songs.h`), /^(SONG|BGM|SE|ME|CRY|NOISE|VO|SOUND)_/);
-const strings = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/strings.h`), /^(STR|BIN)_/);
+const strings = parseDefines(await Deno.readTextFile(`${decomp}/data/scripts/strings.h`), /^(STR|BIN)_/);
 
 // `#define Script_StaffRoll Script_0x1040 // desc` を拾う
 const scriptNames: Define[] = [];
-for (const line of (await Deno.readTextFile(`${decomp}/include/constants/script.h`)).split("\n")) {
+for (const line of (await Deno.readTextFile(`${decomp}/data/scripts/script.h`)).split("\n")) {
   const m = line.match(/^#define (Script_\w+)\s+Script_0x([0-9A-Fa-f]+)\s*(?:\/\/\s*(.*))?$/);
   if (m) scriptNames.push({ name: m[1], id: parseInt(m[2], 16), desc: m[3] ?? "" });
 }
