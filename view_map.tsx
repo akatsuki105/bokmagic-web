@@ -11,10 +11,10 @@ import { parseTileSets, type TileSet } from "./tileset.ts";
 import { type BgPlttFile, parseBgPlttFiles } from "./bgpltt.ts";
 import { GRAYSCALE_PLTT } from "./render.ts";
 import { collisionFiles, type CollisionMap, hasNavIslands, parseCollisionMap, projectToTilemap, tileAtTilemap } from "./collision.ts";
-import { CollisionOverlay, IsoGrid, type OverlayMode, type WorldHighlight, type WorldLayers, WorldOverlay } from "./collision_overlay.tsx";
+import { CollisionOverlay, heightOverlayColor, IsoGrid, mapAttrPalette, type OverlayMode, tileShown, type WorldHighlight, type WorldLayers, WorldOverlay } from "./collision_overlay.tsx";
 import type { LoadCall } from "./script_scan.ts";
 import { scriptHref, scriptLabel } from "./view_script.tsx";
-import { collisionHref, collisionName, collisionTileRows, NavTable, PathTable, ZoneTable } from "./view_collision.tsx";
+import { attrNames, collisionHref, collisionName, collisionTileRows, PathTable, ZoneTable } from "./view_collision.tsx";
 import { tilemapHref, tilemapName } from "./view_tilemap.tsx";
 import { bgplttHref } from "./view_bgpltt.tsx";
 import { type BgPlttChoice, BgPlttSelect, bgpName, Card, Check, CursorCard, Desc, Field, Fields, hashID, hex4, type InfoRow, InfoTable, NameRef, Segmented, Slider, SpriteCanvas, stageShort, ToggleList, useHashID, usePersistentState } from "./components.tsx";
@@ -148,7 +148,9 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
   const [showCol, setShowCol] = usePersistentState("map.collision.tiles", true);
   const [overlayMode, setOverlayMode] = usePersistentState<OverlayMode>("map.collision.mode", "attr");
   const [opacity, setOpacity] = usePersistentState("map.collision.opacity", 0.35);
-  const [world, setWorld] = usePersistentState<WorldLayers>("map.collision.layers", { zones: false, paths: false, navMesh: false });
+  const [storedWorld, setWorld] = usePersistentState<WorldLayers>("map.collision.layers", { zones: false, paths: false, navIslands: false });
+  const world: WorldLayers = { ...storedWorld, navIslands: storedWorld.navIslands ?? false }; // 前の版で保存したもの (navMesh) には navIslands が無い
+  const [worldOpacity, setWorldOpacity] = usePersistentState("map.collision.worldOpacity", 1);
   const [worldHL, setWorldHL] = useState<WorldHighlight>(null); // 一覧でマウスを乗せているゾーン・経路
   const colMap = useMemo((): CollisionMap | null => {
     const f = colFiles.find((f) => f.id === colID);
@@ -176,7 +178,7 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
         <div class="overlay-host">
           <SpriteCanvas rendered={rendered} scale={scale} grid={grid === "square" ? 16 : undefined} onHover={(x, y) => setHover([x, y])} />
           {colMap && showCol && <CollisionOverlay map={colMap} width={width} height={height} scale={scale} mode={overlayMode} opacity={opacity} />}
-          {colMap && (world.zones || world.paths || world.navMesh || worldHL) && <WorldOverlay map={colMap} width={width} height={height} scale={scale} layers={world} highlight={worldHL} />}
+          {colMap && (world.zones || world.paths || world.navIslands || worldHL) && <WorldOverlay map={colMap} width={width} height={height} scale={scale} layers={world} highlight={worldHL} opacity={worldOpacity} />}
           {grid === "iso" && <IsoGrid width={width} height={height} scale={scale} origin={isoOrigin} />}
         </div>
       </div>
@@ -234,20 +236,26 @@ const SceneView: FunctionComponent<{ rom: ROMFile; entry: MapEntry; scene: MapSc
                   </Field>
                 )}
                 <Field label="Overlay">
-                  {(["zones", "paths", "navMesh"] as const).map((o) => (
-                    <Check key={o} checked={world[o]} onChange={(on) => setWorld((cur) => ({ ...cur, [o]: on }))}>
-                      {o === "zones" ? "Zones" : o === "paths" ? "Paths" : "NavMesh"}
+                  {(["zones", "paths", "navIslands"] as const).map((o) => (
+                    <Check key={o} checked={world[o]} onChange={(on) => setWorld((cur) => ({ ...world, ...cur, [o]: on }))}>
+                      {o === "zones" ? "Zones" : o === "paths" ? "Paths" : "NavIslands"}
                     </Check>
                   ))}
                 </Field>
+                {(world.zones || world.paths || world.navIslands) && (
+                  <Field label="不透明度" title="Zones, Paths, NavIslands の重ね描きの不透明度. 一覧の行に乗せて強調しているあいだは 100% で描く">
+                    <Slider value={worldOpacity} min={0.1} max={1} step={0.05} onChange={setWorldOpacity} format={(v) => `${Math.round(v * 100)}%`} />
+                  </Field>
+                )}
               </>
             )}
           </Fields>
         </Card>
+        {colMap && showCol && overlayMode !== "outline" && <OverlayLegend map={colMap} mode={overlayMode} />}
         <CursorCard rows={hoverRows(shown, colMap, hover[0], hover[1])} minRows={1 + state.slots.length + (colMap ? 6 : 0)} />
         {colMap && <ZoneTable map={colMap} hover={worldHL} onHover={setWorldHL} />}
         {colMap && <PathTable map={colMap} hover={worldHL} onHover={setWorldHL} />}
-        {colMap && <NavTable map={colMap} hover={worldHL} onHover={setWorldHL} />}
+        {colMap && <IslandTable key={colMap.id} map={colMap} hover={worldHL} onHover={setWorldHL} />}
         <Card title="Metadata">
           <InfoTable
             rows={[
@@ -353,5 +361,98 @@ const SceneLoads: FunctionComponent<{ entry: MapEntry; scene: MapScene }> = ({ e
         ))}
       </div>
     </>
+  );
+};
+
+// NavMesh の島の一覧. 行にマウスを乗せると、その島を絵の上で強調する
+// 島の行を押すと、その下に島の中の歩ける矩形 (Rect) と出入口 (Portal) の行を開く. その行に乗せると、その要素とつながる要素を絵の上で強調する
+const navTiles = (v: number) => (v % 256 === 0 ? `${v / 256}` : (v / 256).toFixed(2)); // 出入口の位置 (1 タイル = 256) をタイル単位に
+
+const IslandTable: FunctionComponent<{ map: CollisionMap; hover: WorldHighlight; onHover: (h: WorldHighlight) => void }> = ({ map, hover, onHover }) => {
+  const [open, setOpen] = useState<number[]>([]);
+  const islands = map.navMesh ?? [];
+  if (islands.every((is) => is.rects.length === 0)) return null;
+  const range = (lo: number[], hi: number[]) => (lo.length === 0 ? "-" : `${Math.min(...lo)} – ${Math.max(...hi) - 1}`);
+  const isHL = (kind: "rect" | "portal", island: number, index: number) => hover?.kind === kind && hover.island === island && hover.index === index;
+  const toggle = (i: number) => setOpen((cur) => (cur.includes(i) ? cur.filter((k) => k !== i) : [...cur, i]));
+  return (
+    <Card title={`NavIslands (${islands.length})`} tip="敵の移動に使う NavMesh の島. 島ごとに、歩ける矩形 (Rect) と矩形どうしの出入口 (Portal) を持つ. 範囲はタイル単位. 島の行を押すと、島の中の Rect と Portal を開く. 開いた行の Rects / Portals の列は、つながっている要素の番号 (Rect なら接する Portal, Portal ならつなぐ Rect)">
+      <table class="pltt-table striped sub-table hover-rows" onMouseLeave={() => onHover(null)}>
+        <thead>
+          <tr>
+            <th>Island</th>
+            <th>Rects</th>
+            <th>Portals</th>
+            <th>x (タイル)</th>
+            <th>z (タイル)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {islands.flatMap((is, i) => [
+            <tr key={i} class={`nav-island${hover?.kind === "island" && hover.index === i ? " hl" : ""}`} onMouseEnter={() => onHover({ kind: "island", index: i })} onClick={() => toggle(i)}>
+              <td>
+                <span class="caret">{open.includes(i) ? "▾" : "▸"}</span> {i}
+              </td>
+              <td>{is.rects.length}</td>
+              <td>{is.portals.length}</td>
+              <td>{range(is.rects.map((r) => r.minX), is.rects.map((r) => r.maxX))}</td>
+              <td>{range(is.rects.map((r) => r.minY), is.rects.map((r) => r.maxY))}</td>
+            </tr>,
+            ...(!open.includes(i) ? [] : [
+              ...is.rects.map((r, ri) => (
+                <tr key={`${i}.r${ri}`} class={`nav-child${isHL("rect", i, ri) ? " hl" : ""}`} onMouseEnter={() => onHover({ kind: "rect", island: i, index: ri })}>
+                  <td>Rect {ri}</td>
+                  <td></td>
+                  <td class="links" title="この矩形に接する出入口">{r.portals.length > 0 ? r.portals.join(", ") : "-"}</td>
+                  <td>{r.minX} – {r.maxX - 1}</td>
+                  <td>{r.minY} – {r.maxY - 1}</td>
+                </tr>
+              )),
+              ...is.portals.map((p, pi) => (
+                <tr key={`${i}.p${pi}`} class={`nav-child${isHL("portal", i, pi) ? " hl" : ""}`} onMouseEnter={() => onHover({ kind: "portal", island: i, index: pi })} title={`unk_4 = ${hex4(p.unk_4)}`}>
+                  <td>Portal {pi}</td>
+                  <td class="links" title="この出入口がつなぐ矩形">{p.rects.length > 0 ? p.rects.join(", ") : "-"}</td>
+                  <td></td>
+                  <td>{navTiles(p.x)}</td>
+                  <td>{navTiles(p.y)}</td>
+                </tr>
+              )),
+            ]),
+          ])}
+        </tbody>
+      </table>
+    </Card>
+  );
+};
+
+// タイルの Overlay の凡例: 描いている値ごとに色, 値, タイル数 (Zone の外のタイルと属性 0 のタイルは描かないので数えない)
+const OverlayLegend: FunctionComponent<{ map: CollisionMap; mode: "attr" | "height" }> = ({ map, mode }) => {
+  const items = useMemo(() => {
+    const counts = new Map<number, number>();
+    for (let z = 0; z < map.height; z++) {
+      for (let x = 0; x < map.width; x++) {
+        if (!tileShown(map, x, z, mode)) continue;
+        const t = map.tiles[z * map.width + x];
+        const v = mode === "attr" ? t.attr : t.height;
+        if (mode === "attr" && v === 0) continue;
+        counts.set(v, (counts.get(v) ?? 0) + 1);
+      }
+    }
+    return [...counts].sort((a, b) => a[0] - b[0]);
+  }, [map, mode]);
+  const attrColors = useMemo(() => mapAttrPalette(map), [map]);
+  if (items.length === 0) return null;
+  return (
+    <Card title={`凡例 (${mode === "attr" ? "属性" : "高さ"})`} tip={mode === "attr" ? "属性 (TileAttr) の値ごとの色とタイル数. 色はこのマップに出てくる値ごとに割り当てていて、WALL を含む値は暖色 (赤, 橙 など), 含まない値は寒色 (青, 緑 など). 属性が 0 のタイルは塗らない" : "高さ (段) ごとの色とタイル数. 高いほど明るい"}>
+      <div class="legend">
+        {items.map(([v, n]) => (
+          <span key={v} class="legend-item static">
+            <span class="swatch" style={{ background: mode === "attr" ? attrColors.get(v) : heightOverlayColor(v) }} />
+            <span class="legend-name">{mode === "attr" ? `${hex4(v)} ${attrNames(v)}` : `${v} 段`}</span>
+            <span class="legend-count">{n}</span>
+          </span>
+        ))}
+      </div>
+    </Card>
   );
 };

@@ -880,6 +880,24 @@
       .hover-rows tbody tr.hl.strong {
         box-shadow: inset 3px 0 0 var(--accent);
       }
+      /* NavIslands の一覧: 島の行は押すと開く. 開いた Rect / Portal の行は字下げして控えめな色にする */
+      .hover-rows tbody tr.nav-island {
+        cursor: pointer;
+      }
+      .hover-rows tbody tr.nav-island .caret {
+        display: inline-block;
+        width: 1em;
+        color: var(--text-dim);
+      }
+      .hover-rows tbody tr.nav-child td {
+        color: var(--text-dim);
+      }
+      .hover-rows tbody tr.nav-child td:first-child {
+        padding-left: 1.6em;
+      }
+      .hover-rows tbody tr.nav-child.hl td {
+        color: inherit;
+      }
       /* 補足のツールチップ: カードの見出しの横の ?, 説明がある項目名の点線 */
       .tip {
         display: inline-block;
@@ -953,6 +971,12 @@
       .legend-item.selected {
         background: var(--bg-selected);
         box-shadow: inset 0 0 0 1px var(--accent);
+      }
+      .legend-item.static {
+        cursor: default;
+      }
+      .legend-item.static:hover {
+        background: none;
       }
       .legend-name {
         flex: 1;

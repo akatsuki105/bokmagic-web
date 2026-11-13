@@ -34,7 +34,7 @@ const TATTR_NAMES: [number, string][] = [
   [1 << 11, "UNK_11"],
   [1 << 12, "UNK_12"],
 ];
-const attrNames = (a: number) => TATTR_NAMES.filter(([b]) => a & b).map(([, n]) => n).join("|") || "0";
+export const attrNames = (a: number) => TATTR_NAMES.filter(([b]) => a & b).map(([, n]) => n).join("|") || "0";
 
 const STAIRS_NAMES = ["なし", "縦", "横"];
 

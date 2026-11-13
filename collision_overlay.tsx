@@ -3,15 +3,33 @@
 
 import { FunctionComponent } from "preact";
 import { useLayoutEffect, useRef } from "preact/hooks";
-import { type CollisionMap, type CollisionTile, projectToTilemap, tileQuad } from "./collision.ts";
+import { type CollisionMap, type CollisionTile, type NavRect, projectToTilemap, tileQuad } from "./collision.ts";
 
 export type OverlayMode = "height" | "attr" | "outline";
 
 const TATTR_WALL = 1 << 1;
 
-// 重ね描きの色 (絵の上に重ねるので彩度を落とす). Collision タブの上から見た図も同じ色を使う
-// 属性: 壁は落ち着いた赤, ほかの値は値ごとの色相. 高さ: 青の 1 色で、高いほど明るい
-export const attrOverlayColor = (attr: number) => (attr & TATTR_WALL ? "hsl(0 55% 52%)" : `hsl(${(attr * 137.5) % 360} 40% 55%)`);
+// 重ね描きの色 (絵の上に重ねるので彩度を落とす)
+// 属性: そのマップに出てくる値ごとに見分けられる色を割り当てる. WALL を含む値は暖色、含まない値は寒色から、値の小さい順に取る
+// 高さ: 青の 1 色で、高いほど明るい
+const WALL_COLORS = ["hsl(0 60% 52%)", "hsl(30 75% 52%)", "hsl(330 55% 58%)", "hsl(50 75% 50%)", "hsl(15 45% 36%)", "hsl(350 65% 75%)"];
+const OTHER_COLORS = ["hsl(190 60% 48%)", "hsl(140 45% 46%)", "hsl(225 60% 62%)", "hsl(275 45% 62%)", "hsl(165 50% 68%)", "hsl(95 45% 60%)"];
+export const attrPalette = (values: number[]): Map<number, string> => {
+  const colors = new Map<number, string>();
+  let wall = 0, other = 0;
+  for (const v of [...new Set(values)].filter((v) => v !== 0).sort((a, b) => a - b)) {
+    const list = v & TATTR_WALL ? WALL_COLORS : OTHER_COLORS;
+    const k = v & TATTR_WALL ? wall++ : other++;
+    colors.set(v, list[k] ?? `hsl(${(v * 137.5) % 360} 45% 55%)`);
+  }
+  return colors;
+};
+// マップの中で描くタイル (tileShown) の属性の値から色を決める
+export const mapAttrPalette = (map: CollisionMap): Map<number, string> => {
+  const values: number[] = [];
+  for (let z = 0; z < map.height; z++) for (let x = 0; x < map.width; x++) if (tileShown(map, x, z, "attr")) values.push(map.tiles[z * map.width + x].attr);
+  return attrPalette(values);
+};
 export const heightOverlayColor = (h: number) => `hsl(215 45% ${22 + h * 4.5}%)`;
 
 // タイルを塗り分ける値. 境目の線は、この値が隣と違う所にだけ引く
@@ -26,20 +44,28 @@ const fillKey = (t: CollisionTile, mode: OverlayMode): number | null => {
   }
 };
 
-const fillColor = (t: CollisionTile, mode: OverlayMode): string | null => {
+const fillColor = (t: CollisionTile, mode: OverlayMode, attrColors: Map<number, string>): string | null => {
   switch (mode) {
     case "height":
       return heightOverlayColor(t.height);
     case "attr":
-      return t.attr === 0 ? null : attrOverlayColor(t.attr);
+      return t.attr === 0 ? null : attrColors.get(t.attr) ?? null;
     case "outline":
       return null;
   }
 };
 
+// 「属性」「高さ」で描くタイルか: どの Zone にも入らないタイル (タイルの真ん中で見る) は描かない. Zone が 1 つも無いマップでは全タイル
+export const tileShown = (map: CollisionMap, x: number, z: number, mode: OverlayMode) => {
+  if (mode === "outline" || map.zones.length === 0) return true;
+  const cx = (x << 8) + 128, cz = (z << 8) + 128;
+  return map.zones.some((q) => cx >= q.x1 && cx < q.x2 && cz >= q.y1 && cz < q.y2);
+};
+
 // width, height はタイルマップのピクセル数
 // 全タイルに枠を引くと絵の上に細かい格子がかぶって見づらいので、塗り分ける値が隣と違う辺 (領域の境目) にだけ、暗い半透明の細い線を引く
 // 「枠だけ」のときは全タイルの枠を薄く引く
+// 「属性」「高さ」は、どの Zone にも入らないタイル (タイルの真ん中で見る) には描かない. Zone が 1 つも無いマップでは全タイルに描く
 export const CollisionOverlay: FunctionComponent<{ map: CollisionMap; width: number; height: number; scale: number; mode: OverlayMode; opacity: number }> = ({ map, width, height, scale, mode, opacity }) => {
   const ref = useRef<HTMLCanvasElement>(null);
 
@@ -48,15 +74,18 @@ export const CollisionOverlay: FunctionComponent<{ map: CollisionMap; width: num
     if (!ctx) return;
     ctx.clearRect(0, 0, width * scale, height * scale);
     ctx.lineWidth = 1;
-    const tileAt = (x: number, z: number) => (x < 0 || z < 0 || x >= map.width || z >= map.height ? undefined : map.tiles[z * map.width + x]);
+    const shown = (x: number, z: number) => tileShown(map, x, z, mode);
+    const attrColors = mapAttrPalette(map);
+    const tileAt = (x: number, z: number) => (x < 0 || z < 0 || x >= map.width || z >= map.height || !shown(x, z) ? undefined : map.tiles[z * map.width + x]);
     // 奥 (x + z が小さい) から手前へ描く
     const order: [number, number][] = [];
     for (let z = 0; z < map.height; z++) for (let x = 0; x < map.width; x++) order.push([x, z]);
     order.sort((a, b) => a[0] + a[1] - (b[0] + b[1]));
     for (const [x, z] of order) {
+      if (!shown(x, z)) continue;
       const t = map.tiles[z * map.width + x];
       const q = tileQuad(map, x, z).map(([px, py]) => [px * scale, py * scale] as [number, number]);
-      const fill = fillColor(t, mode);
+      const fill = fillColor(t, mode, attrColors);
       if (fill) {
         ctx.beginPath();
         q.forEach(([px, py], k) => (k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
@@ -118,13 +147,14 @@ export const IsoGrid: FunctionComponent<{ width: number; height: number; scale: 
   return <canvas ref={ref} class="collision-overlay" width={width * scale} height={height * scale} />;
 };
 
-export type WorldLayers = { zones: boolean; paths: boolean; navMesh: boolean };
+export type WorldLayers = { zones: boolean; paths: boolean; navIslands: boolean };
 
 // 一覧の行にマウスを乗せているゾーン・経路 (絵の上で強調する). node は経路の点
-// rect, portal は NavMesh の島 island の中の番号
+// island は NavMesh の島の番号 (Map), rect, portal は島 island の中の番号 (Collision タブ)
 export type WorldHighlight =
   | { kind: "zone"; index: number }
   | { kind: "path"; index: number; node?: number }
+  | { kind: "island"; index: number }
   | { kind: "rect"; island: number; index: number }
   | { kind: "portal"; island: number; index: number }
   | null;
@@ -141,6 +171,7 @@ export const navHighlight = (map: CollisionMap, h: WorldHighlight) => {
 export const ZONE_COLOR = "hsl(42 65% 60%)";
 export const pathColor = (i: number) => `hsl(${(i * 137.5 + 200) % 360} 45% 65%)`;
 export const NAV_COLOR = "hsl(160 35% 60%)";
+export const islandColor = (i: number) => `hsl(${(i * 137.5 + 160) % 360} 40% 62%)`;
 export const HIGHLIGHT_COLOR = "hsl(0 0% 96%)"; // 一覧でマウスを乗せている要素
 
 // 絵の上に置く小さな札 (暗い背景に明るい文字). 絵に直接文字を書くと読みにくいので
@@ -165,11 +196,12 @@ const groundY = (map: CollisionMap, x: number, z: number) => {
   return (map.tiles[tz * map.width + tx]?.height ?? 0) << 8;
 };
 
-// ゾーン・経路・ナビメッシュをタイルマップの上に投影して描く (Collision タブでは上から見た図で描いているもの)
-// ゾーンは底の高さ z1 (1 段 = 16) の面、経路の点とナビメッシュはその位置の地面の高さに置く
+// ゾーン・経路・ナビメッシュの島をタイルマップの上に投影して描く (Collision タブでは上から見た図で描いているもの)
+// ゾーンは底の高さ z1 (1 段 = 16) の面、経路の点と島の矩形はその位置の地面の高さに置く
 // 線は細く、塗りは薄く、文字は札に入れる. 経路の札は始点にだけ付ける (点ごとの番号は Collision タブの表で見る)
 // highlight があれば、その要素を太い線と濃い塗りで描き、同じ種類のほかの要素は薄くする. 重ねる設定がオフでも強調する要素は描く
-export const WorldOverlay: FunctionComponent<{ map: CollisionMap; width: number; height: number; scale: number; layers: WorldLayers; highlight?: WorldHighlight }> = ({ map, width, height, scale, layers, highlight = null }) => {
+// opacity は全体の不透明度. 強調しているあいだは強調が見えるように 1 で描く (ほかの要素は上のとおり薄くしている)
+export const WorldOverlay: FunctionComponent<{ map: CollisionMap; width: number; height: number; scale: number; layers: WorldLayers; highlight?: WorldHighlight; opacity?: number }> = ({ map, width, height, scale, layers, highlight = null, opacity = 1 }) => {
   const ref = useRef<HTMLCanvasElement>(null);
 
   useLayoutEffect(() => {
@@ -185,45 +217,108 @@ export const WorldOverlay: FunctionComponent<{ map: CollisionMap; width: number;
       ps.forEach(([x, y], k) => (k === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y)));
       ctx.closePath();
     };
-    // NavMesh: 強調しているときは、強調する要素とそれにつながる要素だけを白で描き、ほかは薄くする
-    const nav = navHighlight(map, highlight);
-    if ((layers.navMesh || nav) && map.navMesh) {
-      map.navMesh.forEach((island, ii) => {
+    // NavMesh の島: Zone と同じく、島ごとに範囲を薄く塗って外周に線を引き、札を付ける (島の中の矩形の境目と出入口は描かない)
+    // 矩形はその左上の隅の地面の高さに置く (Collision タブの上から見た図では矩形と出入口を描いている)
+    const hlIsland = highlight?.kind === "island" ? highlight.index : -1;
+    if ((layers.navIslands || hlIsland >= 0) && map.navMesh) {
+      map.navMesh.forEach((island, i) => {
+        if ((!layers.navIslands && i !== hlIsland) || island.rects.length === 0) return;
+        const hl = i === hlIsland, dim = hlIsland >= 0 && !hl;
+        const color = hl ? HIGHLIGHT_COLOR : islandColor(i);
+        // タイルごとに、どの矩形に入るか (その矩形の高さで描く)
+        const owner = new Map<number, number>();
         island.rects.forEach((r, ri) => {
-          const on = nav?.island === ii && nav.rects.has(ri);
-          if (!layers.navMesh && !on) return;
-          const y = groundY(map, r.minX << 8, r.minY << 8);
-          poly([pt(r.minX << 8, r.minY << 8, y), pt(r.maxX << 8, r.minY << 8, y), pt(r.maxX << 8, r.maxY << 8, y), pt(r.minX << 8, r.maxY << 8, y)]);
-          if (on && nav.main === "rect") {
-            ctx.globalAlpha = 0.3;
-            ctx.fillStyle = NAV_COLOR;
-            ctx.fill();
-          }
-          ctx.globalAlpha = nav && !on ? 0.25 : on ? 1 : 0.6;
-          ctx.strokeStyle = on ? HIGHLIGHT_COLOR : NAV_COLOR;
-          ctx.lineWidth = on && nav.main === "rect" ? 2.5 : 1;
-          ctx.setLineDash(on && nav.main === "rect" ? [] : [3, 3]);
-          ctx.stroke();
+          for (let z = r.minY; z < r.maxY; z++) for (let x = r.minX; x < r.maxX; x++) owner.set(z * map.width + x, ri);
         });
-        ctx.setLineDash([]);
-        island.portals.forEach((p, pi) => {
-          const on = nav?.island === ii && nav.portals.has(pi);
-          if (!layers.navMesh && !on) return;
-          const [x, y] = pt(p.x, p.y);
-          ctx.globalAlpha = nav && !on ? 0.3 : 0.95;
-          ctx.fillStyle = on ? HIGHLIGHT_COLOR : NAV_COLOR;
-          const r = on ? 3.5 : 2;
-          ctx.fillRect(x - r, y - r, r * 2, r * 2);
-          if (on && nav.main === "portal") {
-            ctx.strokeStyle = HIGHLIGHT_COLOR;
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, 9, 0, Math.PI * 2);
-            ctx.stroke();
-          }
+        const heights = island.rects.map((r) => groundY(map, r.minX << 8, r.minY << 8));
+        const inside = (x: number, z: number) => x >= 0 && z >= 0 && x < map.width && z < map.height && owner.has(z * map.width + x);
+        // 塗り: 矩形をまとめて 1 回で塗る (重ねて濃くならないように、継ぎ目が出ないように)
+        ctx.beginPath();
+        island.rects.forEach((r, ri) => {
+          const y = heights[ri];
+          const ps = [pt(r.minX << 8, r.minY << 8, y), pt(r.maxX << 8, r.minY << 8, y), pt(r.maxX << 8, r.maxY << 8, y), pt(r.minX << 8, r.maxY << 8, y)];
+          ps.forEach(([px, py], k) => (k === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py)));
+          ctx.closePath();
         });
+        ctx.globalAlpha = hl ? 0.35 : dim ? 0.05 : 0.12;
+        ctx.fillStyle = islandColor(i);
+        ctx.fill();
+        // 外周: 隣のタイルが島に入らない辺だけを引く
+        ctx.beginPath();
+        for (const [key, ri] of owner) {
+          const x = key % map.width, z = Math.floor(key / map.width), y = heights[ri];
+          const edge = (x1: number, z1: number, x2: number, z2: number) => {
+            const [ax, ay] = pt(x1 << 8, z1 << 8, y), [bx, by] = pt(x2 << 8, z2 << 8, y);
+            ctx.moveTo(ax, ay);
+            ctx.lineTo(bx, by);
+          };
+          if (!inside(x, z - 1)) edge(x, z, x + 1, z);
+          if (!inside(x + 1, z)) edge(x + 1, z, x + 1, z + 1);
+          if (!inside(x, z + 1)) edge(x, z + 1, x + 1, z + 1);
+          if (!inside(x - 1, z)) edge(x, z, x, z + 1);
+        }
+        ctx.globalAlpha = dim ? 0.35 : hl ? 1 : 0.85;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = hl ? 3 : 1.5;
+        ctx.lineCap = "round";
+        ctx.stroke();
+        ctx.lineCap = "butt";
+        ctx.globalAlpha = 1;
       });
-      ctx.globalAlpha = 1;
+      // 札は一番大きい矩形の真ん中に (島の形がへこんでいても島の中に来るように)
+      map.navMesh.forEach((island, i) => {
+        if ((!layers.navIslands && i !== hlIsland) || (hlIsland >= 0 && i !== hlIsland) || island.rects.length === 0) return;
+        const area = (r: NavRect) => (r.maxX - r.minX) * (r.maxY - r.minY);
+        const r = island.rects.reduce((a, b) => (area(b) > area(a) ? b : a));
+        const [cx, cy] = pt((r.minX + r.maxX) << 7, (r.minY + r.maxY) << 7, groundY(map, r.minX << 8, r.minY << 8));
+        drawLabel(ctx, `Island ${i}`, cx, cy, i === hlIsland ? HIGHLIGHT_COLOR : islandColor(i));
+      });
+    }
+    // NavIslands の一覧で開いた Rect / Portal の行に乗せているとき: その要素を白で、つながる要素を白の点線 (矩形) や小さな点 (出入口) で描く
+    const nav = navHighlight(map, highlight);
+    const navIsland = nav && map.navMesh?.[nav.island];
+    if (nav && navIsland) {
+      navIsland.rects.forEach((r, ri) => {
+        if (!nav.rects.has(ri)) return;
+        const main = nav.main === "rect";
+        const y = groundY(map, r.minX << 8, r.minY << 8);
+        poly([pt(r.minX << 8, r.minY << 8, y), pt(r.maxX << 8, r.minY << 8, y), pt(r.maxX << 8, r.maxY << 8, y), pt(r.minX << 8, r.maxY << 8, y)]);
+        if (main) {
+          ctx.globalAlpha = 0.3;
+          ctx.fillStyle = HIGHLIGHT_COLOR;
+          ctx.fill();
+        }
+        // 明るい床でも見えるよう、白い線の下に暗い縁取りを敷く
+        ctx.setLineDash(main ? [] : [4, 3]);
+        ctx.globalAlpha = 0.6;
+        ctx.strokeStyle = "rgb(0 0 0)";
+        ctx.lineWidth = main ? 4.5 : 3.5;
+        ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = HIGHLIGHT_COLOR;
+        ctx.lineWidth = main ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+      });
+      navIsland.portals.forEach((p, pi) => {
+        if (!nav.portals.has(pi)) return;
+        const [x, y] = pt(p.x, p.y);
+        ctx.globalAlpha = 1;
+        ctx.fillStyle = "rgb(0 0 0 / 0.6)";
+        ctx.fillRect(x - 5, y - 5, 10, 10);
+        ctx.fillStyle = HIGHLIGHT_COLOR;
+        ctx.fillRect(x - 3.5, y - 3.5, 7, 7);
+        if (nav.main === "portal") {
+          ctx.beginPath();
+          ctx.arc(x, y, 9, 0, Math.PI * 2);
+          ctx.strokeStyle = "rgb(0 0 0 / 0.6)";
+          ctx.lineWidth = 4;
+          ctx.stroke();
+          ctx.strokeStyle = HIGHLIGHT_COLOR;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+        }
+      });
     }
     const hlZone = highlight?.kind === "zone" ? highlight.index : -1;
     if (layers.zones || hlZone >= 0) {
@@ -281,7 +376,7 @@ export const WorldOverlay: FunctionComponent<{ map: CollisionMap; width: number;
         }
       });
     }
-  }, [map, width, height, scale, layers.zones, layers.paths, layers.navMesh, JSON.stringify(highlight)]);
+  }, [map, width, height, scale, layers.zones, layers.paths, layers.navIslands, JSON.stringify(highlight)]);
 
-  return <canvas ref={ref} class="collision-overlay" width={width * scale} height={height * scale} />;
+  return <canvas ref={ref} class="collision-overlay" width={width * scale} height={height * scale} style={{ opacity: highlight ? 1 : opacity }} />;
 };
