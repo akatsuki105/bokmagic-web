@@ -45,7 +45,7 @@ const parseDefines = (src: string, prefix: RegExp): Define[] => {
 const sprites = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite.h`), /^SPR_/);
 const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite_animation.h`), /^ANI?M_/);
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
-const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);
+const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^MP_/);
 const collisions = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/collision_map.h`), /^HP_/);
 const stages = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/map.h`), /^ST_/);
 const songs = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/songs.h`), /^(SONG|BGM|SE|ME|CRY|NOISE|VO|SOUND)_/);
@@ -119,7 +119,7 @@ ${nameTable(strings)}
 
 // --------------------------------------------
 // AuxSprite とアニメファイルの組を拾う
-// 1. 1行の中に SPRITE_* と ANIM_* の定数が両方ある (sPreviewModels の行, SpriteHolder_InitAux(...) など)
+// 1. 1行の中に SPR_* と ANIM_* の定数が両方ある (sPreviewModels の行, SpriteHolder_InitAux(...) など)
 // 2. 同じ関数の中に Video_GetAuxSprite(_, X) と GetFile(DIR_ANIMATION, Y) が両方ある (X, Y は定数か16進数リテラル)
 
 const spriteByName = new Map(sprites.map((d) => [d.name, d.id]));

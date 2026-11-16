@@ -16,7 +16,7 @@
 
 ### ROM 上の位置
 
-- ディレクトリ `DIR_MAIN_SPRITE` (0xCB05) の各ファイルが 1 つの MainSpriteGfxFile。ファイル ID は SpriteID (`SPRITE_*`)。
+- ディレクトリ `DIR_MAIN_SPRITE` (0xCB05) の各ファイルが 1 つの MainSpriteGfxFile。ファイル ID は SpriteID (`SPR_*`)。
 - `GetFile` が返す ROM 上のポインタを `OpenMainSpriteFile` がそのままヘッダとして読むので、圧縮はされていない。
 - ヘッダ内のオフセットはすべてファイル先頭からのバイト数 (`OpenMainSpriteFile` がファイル先頭を足してポインタにする)。
 
@@ -350,7 +350,7 @@ AuxAnimPlayFlags (再生フラグ): bit0 XFLIP, bit1 YFLIP, bit2 REVERSE。
 - 「restart」は AuxAnimState を作り直してから setAnim する。速度は setAnim が 0x40 に戻すので、その後に setAnimSpeed で当て直す。
 - variant が variantCount 以上のとき、ゲームは `cmds + variant * cmdCount` をそのまま読むが、`setAnim` は variant 0 に戻している。
 - **組み合わせの表は UI 専用**。`tools/gen_tables.ts` が decomp のソースを正規表現で拾って作る:
-  - `aux_anims.ts`: (1) 1 行に `SPRITE_*` と `ANIM_*` (または `ANM_*`) の定数が両方ある、(2) 同じ関数 (行頭が `}` の行で区切る) に `Video_GetAuxSprite(_, X)` と `GetFile(DIR_ANIMATION, Y)` が両方ある。MainSprite の ID が混ざることもある。
+  - `aux_anims.ts`: (1) 1 行に `SPR_*` と `ANIM_*` (または `ANM_*`) の定数が両方ある、(2) 同じ関数 (行頭が `}` の行で区切る) に `Video_GetAuxSprite(_, X)` と `GetFile(DIR_ANIMATION, Y)` が両方ある。MainSprite の ID が混ざることもある。
   - `particle_refs.ts`: 同じ関数に `GetParticleGroup(X)` と `GetFile(DIR_ANIMATION, Y)` / `Particle_SetPltt(_, Z)` がある。グループ名は `include/particle.h`、ポーズ名は `include/constants/particle.h` から。
   - 表は U32J rev1 のもの。`decomp()` (`decomp.ts`) は別の ROM では空の表を返す。
   - `sprite_aux.ts`, `anim_aux.ts`, `particle.ts` はこれらの表を import しない。

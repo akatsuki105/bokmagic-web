@@ -32,9 +32,9 @@ deno run --allow-read --allow-write https://akatsuki105.github.io/bokmagic-web/b
 | コマンド                           | 対象                                 | 出すもの                                                                                 |
 | ---------------------------------- | ------------------------------------ | ---------------------------------------------------------------------------------------- |
 | `list <sprite\|aux\|tilemap\|map>` | —                                    | 一覧 (`items`)                                                                           |
-| `sprite <ID>`                      | MainSprite (`SPRITE_*`)              | ポーズ数・アニメ数・タイル数・palStart と、選んだポーズのサブスプライト・オフセット・box |
-| `aux <ID>`                         | AuxSprite (`SPRITE_*`)               | ポーズ数・大きさ・オフセット・plttID と、選んだポーズの中身                              |
-| `tilemap <ID>`                     | タイルマップ (`TILEMAP_*`)           | ヘッダ・レイヤ・タイルの読み込み元・使っているマップ                                     |
+| `sprite <ID>`                      | MainSprite (`SPR_*`)              | ポーズ数・アニメ数・タイル数・palStart と、選んだポーズのサブスプライト・オフセット・box |
+| `aux <ID>`                         | AuxSprite (`SPR_*`)               | ポーズ数・大きさ・オフセット・plttID と、選んだポーズの中身                              |
+| `tilemap <ID>`                     | タイルマップ (`MP_*`)           | ヘッダ・レイヤ・タイルの読み込み元・使っているマップ                                     |
 | `map <ID>`                         | マップを読み込むスクリプト (`Scr_*`) | ステージ・場面・BG ごとのタイルマップと優先度・パレット・Collision Map                   |
 
 | オプション               | 対象         | 意味                                                                                                 |

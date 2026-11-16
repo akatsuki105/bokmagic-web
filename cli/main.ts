@@ -22,9 +22,9 @@ const USAGE = `usage: bokmagic <rom.gba> <command> [target] [options]
 
 commands:
   list <sprite|aux|tilemap|map>   一覧を JSON で出す
-  sprite <ID|SPRITE_*>            MainSprite の情報を JSON で出す
-  aux <ID|SPRITE_*>               AuxSprite の情報を JSON で出す
-  tilemap <ID|TILEMAP_*>          タイルマップの情報を JSON で出す
+  sprite <ID|SPR_*>            MainSprite の情報を JSON で出す
+  aux <ID|SPR_*>               AuxSprite の情報を JSON で出す
+  tilemap <ID|MP_*>          タイルマップの情報を JSON で出す
   map <ScriptID|Scr_*>         マップ (マップを読み込むスクリプト) の情報を JSON で出す
 
 options:
