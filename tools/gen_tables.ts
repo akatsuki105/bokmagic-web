@@ -42,7 +42,7 @@ const parseDefines = (src: string, prefix: RegExp): Define[] => {
   return defs;
 };
 
-const sprites = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite.h`), /^SPRITE_/);
+const sprites = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite.h`), /^SPR_/);
 const anims = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/sprite_animation.h`), /^ANI?M_/);
 const bgPltts = parseDefines(await Deno.readTextFile(`${decomp}/include/bg_pltt.h`), /^BGP_/);
 const tilemaps = parseDefines(await Deno.readTextFile(`${decomp}/include/constants/tilemap.h`), /^TILEMAP_/);

@@ -3,14 +3,14 @@
 // BG パレットのファイルID -> ソース中で GetBgPlttFile(id) などで読まれている場所 (定数か16進数リテラルで書かれているものだけ)
 export const BGPLTT_REFS: Record<number, string> = {
   0x26BB: "crossover_error.c:71, crossover_lobby.c:86, crossover_result.c:54, entity_7999.c:206, link_battle_lobby.c:92",
-  0x313A: "pile_driver.c:383",
-  0x519C: "entity_8d5c.c:97",
-  0x5F5E: "menu.c:2130",
-  0xA41A: "album_menu.c:272, enemy_dex.c:836, forge.c:664, forge_ef6f.c:123, shop_coffin.c:400, shop_item.c:1410, shop_weapon.c:842, warehouse.c:1736, weapon_dex.c:523",
+  0x313A: "pile_driver.c:380",
+  0x519C: "entity_8d5c.c:97, password.c:263",
+  0x5F5E: "menu.c:2132",
+  0xA41A: "album_menu.c:272, enemy_dex.c:836, forge.c:664, forge_ef6f.c:124, shop_coffin.c:400, shop_item.c:1419, shop_weapon.c:838, warehouse.c:1736, weapon_dex.c:523",
   0xD8C3: "title.c:80",
-  0xE9C3: "game_result.c:333, title_menu.c:4155",
-  0xEAA8: "dark_loans.c:507, menu.c:2131, solar_bank.c:465",
-  0xECBF: "menu.c:2129",
-  0xEFDA: "crossover_battle.c:385, crossover_error.c:61, entity_b88c.c:71, joyspot.c:141, menu.c:2128, menu.c:10663, title_menu.c:237",
+  0xE9C3: "game_result.c:333, password.c:42, title_menu.c:4155",
+  0xEAA8: "dark_loans.c:506, menu.c:2133, solar_bank.c:465",
+  0xECBF: "menu.c:2131",
+  0xEFDA: "crossover_battle.c:385, crossover_error.c:61, joyspot.c:141, link_menu.c:71, menu.c:2130, menu.c:10666, title_menu.c:237",
   0xF0DC: "title.c:189",
 };
